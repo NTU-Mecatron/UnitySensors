@@ -28,8 +28,8 @@ namespace UnitySensors.ROS.Serializer.Sensor
         public override ImuMsg Serialize()
         {
             _msg.header = _header.Serialize();
-            _msg.linear_acceleration = _sourceInterface.acceleration.To<FLU>();
-            _msg.orientation = _sourceInterface.rotation.To<FLU>();
+            _msg.linear_acceleration = _sourceInterface.linearAcceleration.To<FLU>();
+            _msg.orientation = _sourceInterface.orientation.To<FLU>();
             _msg.angular_velocity = _sourceInterface.angularVelocity.To<FLU>();
             return _msg;
         }

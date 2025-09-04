@@ -1,88 +1,70 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Assertions;
 using UnitySensors.Attribute;
 using UnitySensors.Interface.Sensor;
 
 namespace UnitySensors.Sensor.IMU
 {
-    public class IMUSensor : UnitySensor, IImuDataInterface
+    public class IMUSensor : UnityPhysicsSensor, IImuDataInterface
     {
-        private Transform _transform;
+        // Mostly copied from https://github.com/MARUSimulator/marus-core/blob/21c003a384335777b9d9fb6805eeab1cdb93b2f0/Scripts/Sensors/Primitive/ImuSensor.cs
+        // Thank you guys <3
+        [Header("IMU")]
+        public bool withGravity = true;
 
-        [SerializeField, ReadOnly]
-        private Vector3 _position;
-        [SerializeField, ReadOnly]
-        private Vector3 _velocity;
-        [SerializeField, ReadOnly]
-        private Vector3 _acceleration;
-        [SerializeField, ReadOnly]
-        private Quaternion _rotation;
-        [SerializeField, ReadOnly]
-        private Vector3 _angularVelocity;
+        [SerializeField] Rigidbody rigidBody;
 
-        private Vector3 _position_tmp;
-        private Vector3 _velocity_tmp;
-        private Vector3 _acceleration_tmp;
-        private Quaternion _rotation_tmp;
-        private Vector3 _angularVelocity_tmp;
+        [Header("Current values")]
+        public Vector3 linearVelocity;
+        public Vector3 linearAcceleration { get; private set; }
+        [SerializeField] Vector3 _linearAcceleration;
+        [HideInInspector] public double[] linearAccelerationCovariance = new double[9];
 
-        private Vector3 _position_last;
-        private Vector3 _velocity_last;
-        private Quaternion _rotation_last;
+        public Vector3 angularVelocity { get; private set; }
+        [SerializeField] Vector3 _angularVelocity;
+        [HideInInspector] public double[] angularVelocityCovariance = new double[9];
 
-        public Vector3 position { get => _position; }
-        public Vector3 velocity { get => _velocity; }
-        public Vector3 acceleration { get => _acceleration; }
-        public Quaternion rotation { get => _rotation; }
-        public Vector3 angularVelocity { get => _angularVelocity; }
+        public Vector3 eulerAngles;
+        public Quaternion orientation { get; private set; }
+        [SerializeField] Quaternion _orientation;
+        [HideInInspector] public double[] orientationCovariance = new double[9];
 
-        public Vector3 localVelocity { get => _transform.InverseTransformDirection(_velocity); }
-        public Vector3 localAcceleration { get => _transform.InverseTransformDirection(_acceleration.normalized) * _acceleration.magnitude; }
+        private Vector3 lastVelocity = Vector3.zero;
 
-        private Vector3 _gravityDirection;
-        private float _gravityMagnitude;
-        private float _time_last;
+        public override bool UpdateSensor(double deltaTime)
+        {
+            linearVelocity = rigidBody.transform.InverseTransformVector(rigidBody.velocity);
+
+            if (deltaTime > 0)
+            {
+                Vector3 deltaLinearAcceleration = linearVelocity - lastVelocity;
+                linearAcceleration = deltaLinearAcceleration / (float)deltaTime;
+            }
+
+            angularVelocity = -rigidBody.transform.InverseTransformVector(rigidBody.angularVelocity);
+            eulerAngles = rigidBody.transform.rotation.eulerAngles;
+            orientation = Quaternion.Euler(eulerAngles);
+
+            lastVelocity = linearVelocity;
+
+            if (withGravity)
+            {
+                // Find the global gravity in the local frame and add to the computed linear acceleration
+                Vector3 localGravity = rigidBody.transform.InverseTransformDirection(Physics.gravity);
+                linearAcceleration += localGravity;
+            }
+
+            _linearAcceleration = linearAcceleration;
+            _angularVelocity = angularVelocity;
+            _orientation = orientation;
+
+            return true;
+        }
 
         protected override void Init()
         {
-            _transform = this.transform;
-            _gravityDirection = Physics.gravity.normalized;
-            _gravityMagnitude = Physics.gravity.magnitude;
-        }
-
-        public override IEnumerator UpdateSensorOnce()
-        {
-            //FIXME: IMU sensor should be updated at a fixed frequency
-            float dt = Time.deltaTime;
-
-            _position_tmp = _transform.position;
-            _velocity_tmp = (_position_tmp - _position_last) / dt;
-            _acceleration_tmp = (_velocity_tmp - _velocity_last) / dt;
-            _acceleration_tmp -= _transform.InverseTransformDirection(_gravityDirection) * _gravityMagnitude;
-
-            _rotation_tmp = _transform.rotation;
-            Quaternion rotation_delta = Quaternion.Inverse(_rotation_last) * _rotation_tmp;
-            rotation_delta.ToAngleAxis(out float angle, out Vector3 axis);
-            float angularSpeed = (angle * Mathf.Deg2Rad) / dt;
-            _angularVelocity_tmp = axis * angularSpeed;
-
-            _position_last = _position_tmp;
-            _velocity_last = _velocity_tmp;
-            _rotation_last = _rotation_tmp;
-
-            yield return base.UpdateSensorOnce();
-        }
-
-        protected override IEnumerator UpdateSensor()
-        {
-            //FIXME: The linear acceleration and angular velocity should be in imu local frame
-            _position = _position_tmp;
-            _velocity = _velocity_tmp;
-            _acceleration = _acceleration_tmp;
-
-            _rotation = _rotation_tmp;
-            _angularVelocity = _angularVelocity_tmp;
-            yield return null;
+            Assert.IsNotNull(rigidBody, "No Rigidbody assigned to IMU sensor!");
         }
 
         protected override void OnSensorDestroy()
