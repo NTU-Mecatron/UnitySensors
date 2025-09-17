@@ -50,6 +50,7 @@ namespace UnitySensors.Sensor
             if (_timeSinceLastUpdate < _period) return;
             _hasNewData = UpdateSensor(_timeSinceLastUpdate);
             _timeSinceLastUpdate = 0f;
+            _time = Time.time;
         }
 
         public bool HasNewData()
