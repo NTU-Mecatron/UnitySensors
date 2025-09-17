@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnitySensors.ROS.Publisher.Tf2;
 
 namespace UnitySensors.Sensor.TF
 {
@@ -18,14 +19,85 @@ namespace UnitySensors.Sensor.TF
         [SerializeField]
         private string _frame_id;
         [SerializeField]
+        private bool _isTFRoot = false;
+        [SerializeField]
         private TFLink[] _children;
 
         private Transform _transform;
 
+        private readonly List<string> _map_frame_ids = new List<string> { "map", "world" };
+
+        public string FrameId { get => _frame_id; }
+        public bool IsTFRoot { get => _isTFRoot; }
+        private bool IsMapTF() { return GetComponent<TFMessageMsgPublisher>() != null; }
+
         protected override void Init()
         {
             _transform = this.transform;
+
+            // Prepend the TFRoot parent's name to the _frame_id
+            if (!IsMapTF())
+            {
+                Transform parent = _transform;
+                while (parent != null)
+                {
+                    TFLink parent_tf = parent.GetComponent<TFLink>();
+                    if (parent_tf != null && parent_tf.IsTFRoot)
+                    {
+                        // Prepend the TFRoot parent name to the _frame_id
+                        _frame_id = $"{parent.name.Replace(" ", "_").Replace("-", "_")}/{_frame_id}";
+                        break;
+                    }
+                    parent = parent.parent;
+                }
+            }
+            
         }
+
+        private void Reset()
+        {
+            // Set _isTFRoot to true if the nearest parent with TFLink is a map frame
+            _isTFRoot = transform.parent == null || _map_frame_ids.Contains(transform.parent.GetComponentInParent<TFLink>().FrameId); 
+
+            if (!IsMapTF())
+            {
+                if (_isTFRoot)
+                {
+                    _frame_id = "base_link";
+                }
+                else
+                {
+                    // Automatically generate the frame_id based on the GameObject's name
+                    _frame_id = $"{gameObject.name.ToLower()}_link";
+                }
+            }
+            else _frame_id = "map";
+
+            // Automatically find all direct children TFLink components
+            List<TFLink> children = new List<TFLink>();
+            FindDirectChildrenTFLinks(transform, children);
+            _children = children.ToArray();
+        }
+
+        // Recursive method to find direct children TFLink components
+        private void FindDirectChildrenTFLinks(Transform parent, List<TFLink> children)
+        {
+            foreach (Transform child in parent)
+            {
+                TFLink childTFLink = child.GetComponent<TFLink>();
+                if (childTFLink != null)
+                {
+                    // If a TFLink is found, add it to the list and stop searching further into this child
+                    children.Add(childTFLink);
+                }
+                else
+                {
+                    // If no TFLink is found, continue searching recursively into the child's children
+                    FindDirectChildrenTFLinks(child, children);
+                }
+            }
+        }
+
 
         protected override IEnumerator UpdateSensor()
         {

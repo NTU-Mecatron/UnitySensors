@@ -15,6 +15,9 @@ namespace UnitySensors.ROS.Serializer.Std
         [SerializeField]
         private string _frame_id;
 
+        public UnityEngine.Object Source { get => _source; set => _source = value; }
+        public string FrameId { get => _frame_id; set => _frame_id = value; }
+
         private ITimeInterface _sourceInterface;
 
         public override void Init()

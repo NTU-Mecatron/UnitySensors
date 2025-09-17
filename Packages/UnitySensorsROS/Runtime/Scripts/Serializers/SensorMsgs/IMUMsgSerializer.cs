@@ -16,6 +16,9 @@ namespace UnitySensors.ROS.Serializer.Sensor
         [SerializeField]
         private HeaderSerializer _header;
 
+        public Object Source { get => _source; set => _source = value; }
+        public HeaderSerializer Header { get => _header; set => _header = value; }
+
         private IImuDataInterface _sourceInterface;
 
         public override void Init()

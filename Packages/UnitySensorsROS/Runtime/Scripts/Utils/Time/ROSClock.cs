@@ -19,8 +19,12 @@ namespace UnitySensors.ROS.Utils.Time
         private float _time;
         private float _frequency_inv;
         private float _dt;
+        private int _sec;
+        private uint _nanosec;
 
         public float time => _time;
+        public int Sec => _sec;
+        public uint Nanosec => _nanosec;
         private void Awake()
         {
             _dt = 0.0f;
@@ -46,10 +50,13 @@ namespace UnitySensors.ROS.Utils.Time
             _dt -= _frequency_inv;
 #if ROS2
             int sec = (int)Math.Truncate(time);
+            _sec = sec;
 #else
             uint sec = (uint)Math.Truncate(time);
 #endif
             uint nanosec = (uint)((time - sec) * 1e+9);
+            _nanosec = nanosec;
+
             _message.clock.sec = sec;
             _message.clock.nanosec = nanosec;
 
