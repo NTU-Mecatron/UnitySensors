@@ -1,7 +1,7 @@
 using UnityEngine;
 using Unity.Robotics.ROSTCPConnector;
 using Unity.Robotics.ROSTCPConnector.MessageGeneration;
-
+using UnitySensors.ROS.Utils.Namespacing;
 using UnitySensors.ROS.Serializer;
 
 namespace UnitySensors.ROS.Publisher
@@ -9,7 +9,7 @@ namespace UnitySensors.ROS.Publisher
     public class RosMsgPublisher<T, TT> : MonoBehaviour where T : RosMsgSerializer<TT> where TT : Message, new()
     {
         [SerializeField, Min(0)]
-        private float _frequency = 10.0f;
+        protected float _frequency = 10.0f;
 
         [SerializeField]
         protected string _topicName;
@@ -23,6 +23,7 @@ namespace UnitySensors.ROS.Publisher
         private float _frequency_inv;
         private RosTopicState _topicState;
         private int _publisher_id;
+        NamespaceManager _nsManager;
 
         public string topicName { get => _topicName; set => _topicName = value; }
         public float frequency
@@ -66,6 +67,7 @@ namespace UnitySensors.ROS.Publisher
         {
             _ros = ROSConnection.GetOrCreateInstance();
             _serializer.Init();
+            _topicName = NamespaceUtils.GetResolvedTopicName(_topicName, gameObject);
         }
 
         // TODO: Use Coroutine for async publishing
