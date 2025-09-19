@@ -17,16 +17,16 @@ namespace UnitySensors.Sensor.IMU
 
         [Header("Current values")]
         public Vector3 linearVelocity;
-        public Vector3 linearAcceleration { get; private set; }
+        public Vector3 LinearAcceleration { get; private set; }
         [SerializeField] Vector3 _linearAcceleration;
         [HideInInspector] public double[] linearAccelerationCovariance = new double[9];
 
-        public Vector3 angularVelocity { get; private set; }
+        public Vector3 AngularVelocity { get; private set; }
         [SerializeField] Vector3 _angularVelocity;
         [HideInInspector] public double[] angularVelocityCovariance = new double[9];
 
         public Vector3 eulerAngles;
-        public Quaternion orientation { get; private set; }
+        public Quaternion Orientation { get; private set; }
         [SerializeField] Quaternion _orientation;
         [HideInInspector] public double[] orientationCovariance = new double[9];
 
@@ -39,12 +39,12 @@ namespace UnitySensors.Sensor.IMU
             if (deltaTime > 0)
             {
                 Vector3 deltaLinearAcceleration = linearVelocity - lastVelocity;
-                linearAcceleration = deltaLinearAcceleration / (float)deltaTime;
+                LinearAcceleration = deltaLinearAcceleration / (float)deltaTime;
             }
 
-            angularVelocity = -rigidBody.transform.InverseTransformVector(rigidBody.angularVelocity);
+            AngularVelocity = -rigidBody.transform.InverseTransformVector(rigidBody.angularVelocity);
             eulerAngles = rigidBody.transform.rotation.eulerAngles;
-            orientation = Quaternion.Euler(eulerAngles);
+            Orientation = Quaternion.Euler(eulerAngles);
 
             lastVelocity = linearVelocity;
 
@@ -52,12 +52,12 @@ namespace UnitySensors.Sensor.IMU
             {
                 // Find the global gravity in the local frame and add to the computed linear acceleration
                 Vector3 localGravity = rigidBody.transform.InverseTransformDirection(Physics.gravity);
-                linearAcceleration += localGravity;
+                LinearAcceleration += localGravity;
             }
 
-            _linearAcceleration = linearAcceleration;
-            _angularVelocity = angularVelocity;
-            _orientation = orientation;
+            _linearAcceleration = LinearAcceleration;
+            _angularVelocity = AngularVelocity;
+            _orientation = Orientation;
 
             return true;
         }
