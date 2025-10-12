@@ -34,7 +34,7 @@ namespace UnitySensors.Sensor.IMU
 
         public override bool UpdateSensor(double deltaTime)
         {
-            linearVelocity = rigidBody.transform.InverseTransformVector(rigidBody.velocity);
+            linearVelocity = rigidBody.transform.InverseTransformVector(rigidBody.linearVelocity);
 
             if (deltaTime > 0)
             {
