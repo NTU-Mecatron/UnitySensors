@@ -113,6 +113,7 @@ namespace UnitySensors.Sensor.TF
 
             foreach (TFLink child in _children)
             {
+                if (child == null || !child.gameObject.activeInHierarchy) continue;
                 tfData.AddRange(child.GetTFData(_frame_id, worldToLocalMatrix, worldToLocalQuaternion));
             }
 
@@ -144,6 +145,7 @@ namespace UnitySensors.Sensor.TF
 
             foreach (TFLink child in _children)
             {
+                if (child == null || !child.gameObject.activeInHierarchy) continue;
                 tfData.AddRange(child.GetTFData(_frame_id, worldToLocalMatrix, worldToLocalQuaternion));
             }
 
