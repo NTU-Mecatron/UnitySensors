@@ -9,7 +9,7 @@ namespace UnitySensors.ROS.Utils.Namespacing
         [Tooltip("The namespace for this GameObject and its children. Should start with a '/' if it's an absolute namespace and you want to ignore the namespace in the parents..")]
         [SerializeField] private string _currentNamespace = "";
 
-        public string CurrentNamespace => _currentNamespace;
+        public string CurrentNamespace { get => _currentNamespace; set => _currentNamespace = value; }
     }
 
     public static class NamespaceUtils
