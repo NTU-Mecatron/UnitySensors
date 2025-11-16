@@ -27,9 +27,7 @@ namespace UnitySensors.ROS.Publisher
         private ROSConnection _ros;
         private float _dt;
         private float _frequency_inv;
-        private RosTopicState _topicState;
         private int _publisher_id;
-        NamespaceManager _nsManager;
 
         public override string TopicName { get => _topicName; set => _topicName = value; }
         public override float Frequency
@@ -74,21 +72,15 @@ namespace UnitySensors.ROS.Publisher
             _ros = ROSConnection.GetOrCreateInstance();
             _serializer.Init();
             _topicName = NamespaceUtils.GetResolvedTopicName(_topicName, gameObject);
+            _ros.RegisterPublisher<TT>(_topicName);
         }
 
         // TODO: Use Coroutine for async publishing
-        protected virtual void Update()
+        protected virtual void FixedUpdate()
         {
-            _dt += Time.deltaTime;
+            _dt += Time.fixedDeltaTime;
             if (_dt < _frequency_inv) return;
-
-            // Register the publisher if it hasn't been registered yet
-            _topicState = _ros.GetTopic(_topicName);
-            if (_topicState == null || !_topicState.IsPublisher)
-                _ros.RegisterPublisher<TT>(_topicName);
-
             _ros.Publish(_topicName, _serializer.Serialize());
-
             _dt -= _frequency_inv;
         }
 
