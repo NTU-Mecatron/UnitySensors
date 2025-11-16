@@ -6,7 +6,13 @@ using UnitySensors.ROS.Serializer;
 
 namespace UnitySensors.ROS.Publisher
 {
-    public class RosMsgPublisher<T, TT> : MonoBehaviour where T : RosMsgSerializer<TT> where TT : Message, new()
+    public abstract class RosMsgPublisher : MonoBehaviour
+    {
+        public abstract float Frequency { get; set; }
+        public abstract string TopicName { get; set; }
+    }
+
+    public class RosMsgPublisher<T, TT> : RosMsgPublisher where T : RosMsgSerializer<TT> where TT : Message, new()
     {
         [SerializeField, Min(0)]
         protected float _frequency = 10.0f;
@@ -25,8 +31,8 @@ namespace UnitySensors.ROS.Publisher
         private int _publisher_id;
         NamespaceManager _nsManager;
 
-        public string topicName { get => _topicName; set => _topicName = value; }
-        public float frequency
+        public override string TopicName { get => _topicName; set => _topicName = value; }
+        public override float Frequency
         {
             get => _frequency;
             set

@@ -13,6 +13,9 @@ namespace UnitySensors.Sensor.Camera
         [SerializeField]
         protected internal float _fov = 30.0f;
 
+        public Vector2Int Resolution { get => _resolution; set => _resolution = value; }
+        public float Fov { get => _fov; set => _fov = value; }
+
         protected RenderTexture _rt = null;
         protected UnityEngine.Camera _camera;
         protected Texture2D _texture;
