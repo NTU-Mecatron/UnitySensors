@@ -42,11 +42,11 @@ namespace UnitySensors.ROS.Utils.Time
             this._message.clock.nanosec = 0;
         }
 
-        private void Update()
+        private void FixedUpdate()
         {
-            _dt += UnityEngine.Time.deltaTime;
+            _dt += UnityEngine.Time.fixedDeltaTime;
             if (_dt < _frequency_inv) return;
-            _time = UnityEngine.Time.time;
+            _time = UnityEngine.Time.fixedTime;
             _dt -= _frequency_inv;
 #if ROS2
             int sec = (int)Math.Truncate(time);
