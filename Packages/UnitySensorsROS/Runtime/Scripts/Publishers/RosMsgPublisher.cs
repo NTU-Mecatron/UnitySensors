@@ -29,6 +29,7 @@ namespace UnitySensors.ROS.Publisher
         private float _frequency_inv;
         private int _publisher_id;
 
+        public T Serializer { get => _serializer; }
         public override string TopicName { get => _topicName; set => _topicName = value; }
         public override float Frequency
         {

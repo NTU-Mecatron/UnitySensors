@@ -1,24 +1,34 @@
 using UnityEditor;
 using UnitySensors.Sensor.TF;
+using UnitySensors.ROS.Publisher.Tf2;
 
 namespace UnitySensors.ROS.Editor
 {
-    [CustomEditor(typeof(TFLink))]
-    public class TFLinkEditor : UnityEditor.Editor
-    {
-        readonly string frequencyLabel = nameof(TFLink._frequency);
-        readonly string scriptLabel = "m_Script";
-        public override void OnInspectorGUI()
-        {
-            serializedObject.Update();
+    //[CustomEditor(typeof(TFLink))]
+    //public class TFLinkEditor : Editor
+    //{
+    //    SerializedProperty _frame_id;
+    //    SerializedProperty _children;
 
-            EditorGUI.BeginDisabledGroup(true);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty(scriptLabel));
-            EditorGUI.EndDisabledGroup();
+    //    void OnEnable()
+    //    {
+    //        _frame_id = serializedObject.FindProperty("_frame_id");
+    //        _children = serializedObject.FindProperty("_children");
+    //    }
 
-            DrawPropertiesExcluding(serializedObject, frequencyLabel, scriptLabel);
-            serializedObject.ApplyModifiedProperties();
+    //    public override void OnInspectorGUI()
+    //    {
+    //        serializedObject.Update();
 
-        }
-    }
+    //        TFLink tfLink = (TFLink)target;
+    //        bool hasTFMessagePublisher = tfLink.GetComponent<TFMessageMsgPublisher>() != null;
+
+    //        // Link settings header
+    //        EditorGUILayout.LabelField("Link settings", EditorStyles.boldLabel);
+    //        EditorGUILayout.PropertyField(_frame_id);
+    //        EditorGUILayout.PropertyField(_children);
+
+    //        serializedObject.ApplyModifiedProperties();
+    //    }
+    //}
 }

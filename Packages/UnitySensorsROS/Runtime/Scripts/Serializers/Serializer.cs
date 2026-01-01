@@ -1,12 +1,13 @@
 using Unity.Robotics.ROSTCPConnector.MessageGeneration;
 using UnityEngine;
+using UnitySensors.Attribute;
 
 namespace UnitySensors.ROS.Serializer
 {
     [System.Serializable]
     public abstract class RosMsgSerializer<T> where T : Message, new()
     {
-        [SerializeField]
+        [SerializeField, ReadOnly, Tooltip("For runtime monitoring only.")]
         protected T _msg;
         public T msg { get => _msg; }
 
