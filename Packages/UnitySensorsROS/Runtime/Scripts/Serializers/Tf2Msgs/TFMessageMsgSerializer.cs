@@ -17,14 +17,14 @@ namespace UnitySensors.ROS.Serializer.Tf2
         [SerializeField]
         TFLink _source;
 
-        [SerializeField, Tooltip("If true, it will recursively gather TF data from its children. " +
+        [Tooltip("If true, it will recursively gather TF data from its children. " +
             "If false, it will only provide TF data of the most immediate children.")]
-        bool _recurseFindChildLinks = true;
+        public bool recurseFindChildLinks = true;
 
         [Tooltip("If true, it will prepend the name of the gameObject containing base_link to the frame_id. " +
             "For example, base_link -> robot/base_link and imu_link -> robot/imu_link. " +
             "\n\nTick true only when there are multiple base_link as children (aka a map publisher). ")]
-        public bool useBaseLinkNameAsPrefix;
+        public bool useBaseLinkNameAsPrefix = false;
 
         [Tooltip("Add a suffix to all link name if not null. For example, base_link -> base_link_gt.")]
         public string suffix = "_gt";
@@ -46,7 +46,7 @@ namespace UnitySensors.ROS.Serializer.Tf2
             HeaderMsg headerMsg = _header.Serialize();
             List<TransformStampedMsg> transforms = new List<TransformStampedMsg>();
 
-            TFData[] tfData = _source.GetTFData(_recurseFindChildLinks, useBaseLinkNameAsPrefix, suffix);
+            TFData[] tfData = _source.GetTFData(recurseFindChildLinks, useBaseLinkNameAsPrefix, suffix);
             foreach (TFData data in tfData)
             {
                 TransformStampedMsg transform = new TransformStampedMsg();

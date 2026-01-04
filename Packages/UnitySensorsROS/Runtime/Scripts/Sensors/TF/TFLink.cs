@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.Robotics.ROSTCPConnector.ROSGeometry;
 using UnityEngine;
-using UnitySensors.ROS.Publisher.Tf2;
-using UnitySensors.ROS.Utils.Namespacing;
 
 namespace UnitySensors.Sensor.TF
 {
@@ -27,11 +25,13 @@ namespace UnitySensors.Sensor.TF
     /// </summary>
     public class TFLink : UnitySensor
     {
+
         [SerializeField, Tooltip("Frame Id of this game object. Could be world, map, base_link, sensor_link." +
             "\n\nDo not prepend the name of the robot to the link (aka do not write robot/base_link).")]
         string _frame_id;
 
-        [SerializeField, Tooltip("List of child links. This list will be auto-populated during runtime so you can check in the editor.")]
+        [SerializeField, Tooltip("List of child links. This list will be auto-populated during runtime if not assigned in inspector. " +
+            "Or it will use the items that you have assigned and do not auto-search for child links.")]
         TFLink[] _children;
 
         //// Only appear in inspector if TfMessageMsgPublisher is present
@@ -52,7 +52,7 @@ namespace UnitySensors.Sensor.TF
         [Tooltip("Cache the name of the gameObject containing base_link.")]
         string _base_link_prefix = "";
 
-        public string FrameId => _frame_id;
+        public string FrameId { get { return _frame_id; } set { _frame_id = value; } }
 
         protected override void Init()
         {
@@ -66,14 +66,19 @@ namespace UnitySensors.Sensor.TF
                 _base_link_prefix = baseLinkName + "/"; // End with slash (eg. robot/)
             }
 
-            // Automatically find all direct children TFLink components
-            List<TFLink> children = new List<TFLink>();
-            FindDirectChildrenTFLinks(transform, children);
-            _children = children.ToArray();
+            // Automatically find all direct children TFLink components if null
+            if (_children == null || _children.Length == 0)
+            {
+                List<TFLink> children = new ();
+                FindDirectChildrenTFLinks(transform, children);
+                _children = children.ToArray();
+            }        
 
             // Remove null or inactive children
             _children = _children.Where(child => child != null && child.gameObject.activeInHierarchy).ToArray();
         }
+
+        bool IsBaseLink(string frameId) => frameId.Contains("base_link");
 
         /// <summary>
         /// Recursively searches up the parent hierarchy for a TFLink with frame_id "base_link"
@@ -86,7 +91,7 @@ namespace UnitySensors.Sensor.TF
 
             if (current.TryGetComponent<TFLink>(out var tfLink))
             {
-                if (tfLink.FrameId == "base_link")
+                if (IsBaseLink(tfLink.FrameId))
                 {
                     return current.gameObject.name.ToLower().Replace(" ", "_");
                 }
@@ -123,8 +128,19 @@ namespace UnitySensors.Sensor.TF
         {
             List<TFData> tfData = new();
 
+            // Warn if map/world frame is not at origin with no rotation
+            if (_frame_id == "map" || _frame_id == "world")
+            {
+                if (_transform.position != Vector3.zero || _transform.rotation != Quaternion.identity)
+                {
+                    Debug.LogWarning($"TFLink: The '{_frame_id}' frame is expected to be at the origin with no rotation. " +
+                        $"However, the current position is {_transform.position} and rotation is {_transform.rotation.eulerAngles}. " +
+                        $"Please ensure that the '{_frame_id}' frame is correctly set up at the world origin.");
+                }
+            }
+
             // If this method is called on the base_link (aka the TF publisher is on this link), add map->odom and odom->base_link static frames
-            if (_frame_id == "base_link")
+            if (IsBaseLink(_frame_id))
             {
                 AddStaticFrames(tfData, useBaseLinkNameAsPrefix, suffix);
             }
@@ -159,7 +175,7 @@ namespace UnitySensors.Sensor.TF
             CoordinateSpaceSelection positionFrame = (parentFrameId == "map" || parentFrameId == "world" || parentFrameId == "odom") 
                                                 ? CoordinateSpaceSelection.ENU : CoordinateSpaceSelection.FLU;
             // ENU frame will introduct a 90deg offset (if Z-axis is North) while FLU keep things the same
-            CoordinateSpaceSelection rotationFrame = (_frame_id == "base_link") 
+            CoordinateSpaceSelection rotationFrame = (IsBaseLink(_frame_id)) 
                                                 ? CoordinateSpaceSelection.ENU : CoordinateSpaceSelection.FLU;
 
             // Add this link's TF data
@@ -191,9 +207,15 @@ namespace UnitySensors.Sensor.TF
         /// </summary>
         void AddStaticFrames(List<TFData> tfData, bool useBaseLinkNameAsPrefix, string suffix)
         {
+            if (!IsBaseLink(_frame_id))
+            {
+                Debug.LogWarning("TFLink: AddStaticFrames called on a non-base_link TFLink. This should not happen.");
+                return;
+            }
+
             string prefix = (useBaseLinkNameAsPrefix) ? _base_link_prefix : "";
             string odomFrameId = prefix + "odom" + suffix;
-            string baseLinkFrameId = prefix + "base_link" + suffix;
+            string baseLinkFrameId = prefix + _frame_id + suffix;
 
             TFData mapToOdom = new()
             {
