@@ -1,15 +1,21 @@
-using UnityEngine;
 using UnityEditor;
+using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace UnitySensors.Attribute
 {
     [CustomPropertyDrawer(typeof(ReadOnlyAttribute))]
     public class ReadOnlyDrawer : PropertyDrawer
     {
-        public override void OnGUI(Rect _position, SerializedProperty _property, GUIContent _label)
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        {
+            return EditorGUI.GetPropertyHeight(property, label, true);
+        }
+
+        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             EditorGUI.BeginDisabledGroup(true);
-            EditorGUI.PropertyField(_position, _property, _label);
+            EditorGUI.PropertyField(position, property, label, true);
             EditorGUI.EndDisabledGroup();
         }
     }

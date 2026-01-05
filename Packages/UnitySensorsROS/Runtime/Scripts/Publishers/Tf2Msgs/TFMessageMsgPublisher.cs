@@ -10,8 +10,8 @@ namespace UnitySensors.ROS.Publisher.Tf2
     {
         void Reset()
         {
-            _topicName = "/tf";
-            _frequency = 50.0f;
+            _topicName = "tf";
+            _serializer.Source = GetComponent<TFLink>();
         }
     }
 }

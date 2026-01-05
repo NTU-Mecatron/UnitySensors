@@ -1,7 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using Unity.Robotics.ROSTCPConnector.ROSGeometry;
 using UnityEngine;
-using UnitySensors.ROS.Publisher.Tf2;
 
 namespace UnitySensors.Sensor.TF
 {
@@ -12,80 +13,101 @@ namespace UnitySensors.Sensor.TF
         public string frame_id_child;
         public Vector3 position;
         public Quaternion rotation;
+        public CoordinateSpaceSelection position_frame_convention;
+        public CoordinateSpaceSelection rotation_frame_convention;
     };
 
+    /// <summary>
+    /// A class that acts as both a TF Link and a source of TF data for the TfMessageMsgSerializer.
+    /// As a TF Link, it holds information about its frame id, transform, and child links.
+    /// When TfMessagePublisher is present and uses this TFLink as its source, you can dictate whether it should recursively gather TF data from child links.
+    /// This functionality is useful for global TF publishers where you only want to publish the base_link and exclude all child links.
+    /// </summary>
     public class TFLink : UnitySensor
     {
-        [SerializeField]
-        private string _frame_id;
-        [SerializeField]
-        private bool _isTFRoot = false;
-        [SerializeField]
-        private TFLink[] _children;
 
-        private Transform _transform;
+        [SerializeField, Tooltip("Frame Id of this game object. Could be world, map, base_link, sensor_link." +
+            "\n\nDo not prepend the name of the robot to the link (aka do not write robot/base_link).")]
+        string _frame_id;
 
-        private readonly List<string> _map_frame_ids = new List<string> { "map", "world" };
+        [SerializeField, Tooltip("List of child links. This list will be auto-populated during runtime if not assigned in inspector. " +
+            "Or it will use the items that you have assigned and do not auto-search for child links.")]
+        TFLink[] _children;
 
-        public string FrameId { get => _frame_id; }
-        public bool IsTFRoot { get => _isTFRoot; }
-        private bool IsMapTF() { return GetComponent<TFMessageMsgPublisher>() != null; }
+        //// Only appear in inspector if TfMessageMsgPublisher is present
+        //[SerializeField, Tooltip("If true, when this TFLink is used as a source for TfMessagePublisher, " +
+        //    "it will recursively gather TF data from its children. " +
+        //    "If false, it will only provide its own TF data without considering children." +
+        //    "\n\nIf this is true, _useNamespacedChildIds should be false. And vice versa.")]
+        //bool _recurseFindChildLinks = true;
+        //// Only appear in inspector if TfMessageMsgPublisher is present
+        //[SerializeField, Tooltip("If true, when this TFLink is used as a source for TfMessagePublisher, " +
+        //    "it will prepend the name of the robot to the frame ids. " +
+        //    "If false, it will use the frame ids as is.")]
+        //bool _useNamespacedChildIds = false;
+
+        [Tooltip("Cached transform of this TFLink.")]
+        Transform _transform;
+
+        [Tooltip("Cache the name of the gameObject containing base_link.")]
+        string _base_link_prefix = "";
+
+        public string FrameId { get { return _frame_id; } set { _frame_id = value; } }
 
         protected override void Init()
         {
             _transform = this.transform;
+            _frame_id = _frame_id.ToLower().Replace(" ", "_");
 
-            // Prepend the TFRoot parent's name to the _frame_id
-            if (!IsMapTF())
+            // Recursively look for parent TFLink with frame id "base_link" to cache
+            string baseLinkName = FindBaseLinkGameObjectName(_transform);
+            if (!string.IsNullOrEmpty(baseLinkName))
             {
-                Transform parent = _transform;
-                while (parent != null)
-                {
-                    TFLink parent_tf = parent.GetComponent<TFLink>();
-                    if (parent_tf != null && parent_tf.IsTFRoot)
-                    {
-                        // Prepend the TFRoot parent name to the _frame_id
-                        _frame_id = $"{parent.name.Replace(" ", "_").Replace("-", "_")}/{_frame_id}";
-                        break;
-                    }
-                    parent = parent.parent;
-                }
+                _base_link_prefix = baseLinkName + "/"; // End with slash (eg. robot/)
             }
-            
+
+            // Automatically find all direct children TFLink components if null
+            if (_children == null || _children.Length == 0)
+            {
+                List<TFLink> children = new ();
+                FindDirectChildrenTFLinks(transform, children);
+                _children = children.ToArray();
+            }        
+
+            // Remove null or inactive children
+            _children = _children.Where(child => child != null && child.gameObject.activeInHierarchy).ToArray();
         }
 
-        private void Reset()
+        bool IsBaseLink(string frameId) => frameId.Contains("base_link");
+
+        /// <summary>
+        /// Recursively searches up the parent hierarchy for a TFLink with frame_id "base_link"
+        /// and returns the name of its GameObject, or empty string if not found.
+        /// </summary>
+        string FindBaseLinkGameObjectName(Transform current)
         {
-            // Set _isTFRoot to true if the nearest parent with TFLink is a map frame
-            _isTFRoot = transform.parent == null || _map_frame_ids.Contains(transform.parent.GetComponentInParent<TFLink>().FrameId); 
+            if (current == null)
+                return "";
 
-            if (!IsMapTF())
+            if (current.TryGetComponent<TFLink>(out var tfLink))
             {
-                if (_isTFRoot)
+                if (IsBaseLink(tfLink.FrameId))
                 {
-                    _frame_id = "base_link";
-                }
-                else
-                {
-                    // Automatically generate the frame_id based on the GameObject's name
-                    _frame_id = $"{gameObject.name.ToLower()}_link";
+                    return current.gameObject.name.ToLower().Replace(" ", "_");
                 }
             }
-            else _frame_id = "map";
 
-            // Automatically find all direct children TFLink components
-            List<TFLink> children = new List<TFLink>();
-            FindDirectChildrenTFLinks(transform, children);
-            _children = children.ToArray();
+            return FindBaseLinkGameObjectName(current.parent);
         }
 
-        // Recursive method to find direct children TFLink components
-        private void FindDirectChildrenTFLinks(Transform parent, List<TFLink> children)
+        /// <summary>
+        /// Recursive method to find direct children TFLink components and append it to a list
+        /// </summary>
+        void FindDirectChildrenTFLinks(Transform parent, List<TFLink> children)
         {
             foreach (Transform child in parent)
             {
-                TFLink childTFLink = child.GetComponent<TFLink>();
-                if (childTFLink != null)
+                if (child.TryGetComponent<TFLink>(out var childTFLink))
                 {
                     // If a TFLink is found, add it to the list and stop searching further into this child
                     children.Add(childTFLink);
@@ -98,62 +120,127 @@ namespace UnitySensors.Sensor.TF
             }
         }
 
-
-        protected override IEnumerator UpdateSensor()
+        /// <summary>
+        /// Public method for the TfMessageMsgSerializer to get all TF data from this link and optionally its children.
+        /// Only the top level TFLink call this. Whatever code inside this method is only run once, not recursively.
+        /// </summary>
+        public TFData[] GetTFData(bool recurseFindChildLinks, bool useBaseLinkNameAsPrefix, string suffix)
         {
-            yield return null;
-        }
+            List<TFData> tfData = new();
 
-        public TFData[] GetTFData()
-        {
-            List<TFData> tfData = new List<TFData>();
+            // Warn if map/world frame is not at origin with no rotation
+            if (_frame_id == "map" || _frame_id == "world")
+            {
+                if (_transform.position != Vector3.zero || _transform.rotation != Quaternion.identity)
+                {
+                    Debug.LogWarning($"TFLink: The '{_frame_id}' frame is expected to be at the origin with no rotation. " +
+                        $"However, the current position is {_transform.position} and rotation is {_transform.rotation.eulerAngles}. " +
+                        $"Please ensure that the '{_frame_id}' frame is correctly set up at the world origin.");
+                }
+            }
 
-            Matrix4x4 worldToLocalMatrix = _transform.worldToLocalMatrix;
-            Quaternion worldToLocalQuaternion = Quaternion.Inverse(_transform.rotation);
+            // If this method is called on the base_link (aka the TF publisher is on this link), add map->odom and odom->base_link static frames
+            if (IsBaseLink(_frame_id))
+            {
+                AddStaticFrames(tfData, useBaseLinkNameAsPrefix, suffix);
+            }
 
+            // Correctly set the frame id for this link
+            string prefix = (useBaseLinkNameAsPrefix) ? _base_link_prefix : "";
+            string frame_id = (_frame_id == "map" || _frame_id == "world") ? _frame_id : prefix + _frame_id + suffix;
+
+            // Get TF data from all children
             foreach (TFLink child in _children)
             {
-                if (child == null || !child.gameObject.activeInHierarchy) continue;
-                tfData.AddRange(child.GetTFData(_frame_id, worldToLocalMatrix, worldToLocalQuaternion));
+                tfData.AddRange(child.GetTFData(frame_id, _transform, recurseFindChildLinks, useBaseLinkNameAsPrefix, suffix));
             }
 
             return tfData.ToArray();
         }
 
-        public TFData[] GetTFData(string frame_id_parent, Matrix4x4 worldToLocalMatrix, Quaternion worldToLocalQuaternion)
+        /// <summary>
+        /// Method usually called by the child link. Hence must be public method.
+        /// </summary>
+        public TFData[] GetTFData(string parentFrameId, Transform parentTransform, bool recurseFindChildLinks, bool useBaseLinkNameAsPrefix, string suffix)
         {
-            List<TFData> tfData = new List<TFData>();
+            List<TFData> tfData = new();
 
-            TFData tfData_self;
-            tfData_self.frame_id_parent = frame_id_parent;
-            tfData_self.frame_id_child = _frame_id;
-            tfData_self.position = (Vector3)(worldToLocalMatrix * new Vector4(_transform.position.x, _transform.position.y, _transform.position.z, 1.0f));
-            Vector3 localScale = _transform.localScale;
-            Vector3 lossyScale = _transform.lossyScale;
-            Vector3 scaleVector = new Vector3()
+            // Get this link's TF data relative to the parent
+            string prefix = (useBaseLinkNameAsPrefix) ? _base_link_prefix : "";
+            string frame_id = prefix + _frame_id + suffix;
+            Vector3 relativePos = parentTransform.InverseTransformPoint(_transform.position);
+            Quaternion relativeRot = Quaternion.Inverse(parentTransform.rotation) * _transform.rotation;
+
+            // Use ENU for map/world/odom frames, FLU for body frames and save this setting for the TFMessageMsgSerializer to perform the actual conversion
+            CoordinateSpaceSelection positionFrame = (parentFrameId == "map" || parentFrameId == "world" || parentFrameId == "odom") 
+                                                ? CoordinateSpaceSelection.ENU : CoordinateSpaceSelection.FLU;
+            // ENU frame will introduct a 90deg offset (if Z-axis is North) while FLU keep things the same
+            CoordinateSpaceSelection rotationFrame = (IsBaseLink(_frame_id)) 
+                                                ? CoordinateSpaceSelection.ENU : CoordinateSpaceSelection.FLU;
+
+            // Add this link's TF data
+            TFData tfData_self = new ()
             {
-                x = localScale.x != 0 ? lossyScale.x / localScale.x : 0,
-                y = localScale.y != 0 ? lossyScale.y / localScale.y : 0,
-                z = localScale.z != 0 ? lossyScale.z / localScale.z : 0
+                frame_id_parent = parentFrameId,
+                frame_id_child = frame_id,
+                position = relativePos,
+                rotation = relativeRot,
+                position_frame_convention = positionFrame,
+                rotation_frame_convention = rotationFrame
             };
-            tfData_self.position.Scale(scaleVector);
-            tfData_self.rotation = worldToLocalQuaternion * _transform.rotation;
             tfData.Add(tfData_self);
 
-            worldToLocalMatrix = _transform.worldToLocalMatrix;
-            worldToLocalQuaternion = Quaternion.Inverse(_transform.rotation);
-
-            foreach (TFLink child in _children)
+            // Recursively get TF data from children if specified, using only the top-level parent setting
+            if (recurseFindChildLinks)
             {
-                if (child == null || !child.gameObject.activeInHierarchy) continue;
-                tfData.AddRange(child.GetTFData(_frame_id, worldToLocalMatrix, worldToLocalQuaternion));
+                foreach (TFLink child in _children)
+                {
+                    tfData.AddRange(child.GetTFData(frame_id, this._transform, recurseFindChildLinks, useBaseLinkNameAsPrefix, suffix));
+                }
             }
-
+            
             return tfData.ToArray();
         }
 
-        protected override void OnSensorDestroy()
+        /// <summary>
+        /// Method to add static frames: map->odom and odom->base_link
+        /// </summary>
+        void AddStaticFrames(List<TFData> tfData, bool useBaseLinkNameAsPrefix, string suffix)
         {
+            if (!IsBaseLink(_frame_id))
+            {
+                Debug.LogWarning("TFLink: AddStaticFrames called on a non-base_link TFLink. This should not happen.");
+                return;
+            }
+
+            string prefix = (useBaseLinkNameAsPrefix) ? _base_link_prefix : "";
+            string odomFrameId = prefix + "odom" + suffix;
+            string baseLinkFrameId = prefix + _frame_id + suffix;
+
+            TFData mapToOdom = new()
+            {
+                frame_id_parent = "map",
+                frame_id_child = odomFrameId,
+                position = Vector3.zero,
+                rotation = Quaternion.identity,
+                position_frame_convention = CoordinateSpaceSelection.ENU,
+                rotation_frame_convention = CoordinateSpaceSelection.FLU
+            };
+            tfData.Add(mapToOdom);
+
+            TFData odomToBaseLink = new()
+            {
+                frame_id_parent = odomFrameId,
+                frame_id_child = baseLinkFrameId,
+                position = _transform.position,
+                rotation = _transform.rotation,
+                position_frame_convention = CoordinateSpaceSelection.ENU,
+                rotation_frame_convention = CoordinateSpaceSelection.ENU
+            };
+            tfData.Add(odomToBaseLink);
         }
+
+        protected override IEnumerator UpdateSensor() { yield return null; }
+        protected override void OnSensorDestroy() {}
     }
 }

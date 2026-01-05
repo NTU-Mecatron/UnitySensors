@@ -29,6 +29,8 @@ namespace UnitySensors.ROS.Serializer.Sensor
 
         private ITextureInterface _sourceInterface;
 
+        public HeaderSerializer Header { get => _header; set => _header = value; }
+
         public override void Init()
         {
             base.Init();

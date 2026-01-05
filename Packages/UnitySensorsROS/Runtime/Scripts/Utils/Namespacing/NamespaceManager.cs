@@ -36,11 +36,10 @@ namespace UnitySensors.ROS.Utils.Namespacing
 
             // Recursively look up the parent hierarchy for NamespaceManager
             string resolvedNamespace = "";
-            Transform parent = currentObject.transform.parent;
+            Transform parent = currentObject.transform;
             while (parent != null)
             {
-                NamespaceManager parentNamespaceManager = parent.GetComponent<NamespaceManager>();
-                if (parentNamespaceManager != null)
+                if (parent.TryGetComponent<NamespaceManager>(out var parentNamespaceManager))
                 {
                     resolvedNamespace = $"{parentNamespaceManager.CurrentNamespace}/{resolvedNamespace}".Replace("//", "/");
                 }

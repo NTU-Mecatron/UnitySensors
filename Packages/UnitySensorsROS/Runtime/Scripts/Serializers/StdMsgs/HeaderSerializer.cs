@@ -1,9 +1,9 @@
+using RosMessageTypes.Std;
 using System;
 using UnityEngine;
-using RosMessageTypes.Std;
-
 using UnitySensors.Attribute;
 using UnitySensors.Interface.Std;
+using UnitySensors.ROS.Utils.Time;
 
 namespace UnitySensors.ROS.Serializer.Std
 {
@@ -23,6 +23,7 @@ namespace UnitySensors.ROS.Serializer.Std
         public override void Init()
         {
             base.Init();
+            _source = UnityEngine.Object.FindFirstObjectByType<ROSClock>();
             _sourceInterface = _source as ITimeInterface;
 
             _msg = new HeaderMsg();
