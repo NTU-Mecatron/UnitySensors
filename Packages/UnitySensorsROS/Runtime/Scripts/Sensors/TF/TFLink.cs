@@ -52,6 +52,14 @@ namespace UnitySensors.Sensor.TF
         [Tooltip("Cache the name of the gameObject containing base_link.")]
         string _base_link_prefix = "";
 
+        [Tooltip("Cached odom position relative to map (starting position of the robot when respawned). " +
+            "Only relevant when _frame_id is base_link.")]
+        Vector3 _odom_position;
+
+        [Tooltip("Cached odom rotation relative to map (starting rotation of the robot when respawned). " +
+            "Only relevant when _frame_id is base_link.")]
+        Quaternion _odom_rotation;
+
         public string FrameId { get { return _frame_id; } set { _frame_id = value; } }
 
         protected override void Init()
@@ -76,9 +84,15 @@ namespace UnitySensors.Sensor.TF
 
             // Remove null or inactive children
             _children = _children.Where(child => child != null && child.gameObject.activeInHierarchy).ToArray();
+
+            if (IsBaseLink(_frame_id))
+            {
+                ResetOdomTransform();
+            }
         }
 
         bool IsBaseLink(string frameId) => frameId.Contains("base_link");
+        public bool IsBaseLink() => IsBaseLink(_frame_id);
 
         /// <summary>
         /// Recursively searches up the parent hierarchy for a TFLink with frame_id "base_link"
@@ -221,23 +235,46 @@ namespace UnitySensors.Sensor.TF
             {
                 frame_id_parent = "map",
                 frame_id_child = odomFrameId,
-                position = Vector3.zero,
-                rotation = Quaternion.identity,
+                position = _odom_position,
+                rotation = _odom_rotation,
                 position_frame_convention = CoordinateSpaceSelection.ENU,
                 rotation_frame_convention = CoordinateSpaceSelection.FLU
             };
             tfData.Add(mapToOdom);
 
+            // Calculate relative transform from odom to base_link using cached odom values
+            Quaternion odomRotationInverse = Quaternion.Inverse(_odom_rotation);
+            Vector3 relativePosition = odomRotationInverse * (_transform.position - _odom_position);
+            Quaternion relativeRotation = odomRotationInverse * _transform.rotation;
+
             TFData odomToBaseLink = new()
             {
                 frame_id_parent = odomFrameId,
                 frame_id_child = baseLinkFrameId,
-                position = _transform.position,
-                rotation = _transform.rotation,
+                position = relativePosition,
+                rotation = relativeRotation,
                 position_frame_convention = CoordinateSpaceSelection.ENU,
                 rotation_frame_convention = CoordinateSpaceSelection.ENU
             };
             tfData.Add(odomToBaseLink);
+        }
+
+        /// <summary>
+        /// Public method to reset the odom transform to the current transform of the base_link.
+        /// Should only be called on the base_link TFLink whenever the robot is respawned so that the odom coincides with base_link initially.
+        /// </summary>
+        public void ResetOdomTransform()
+        {
+            if (!IsBaseLink(_frame_id))
+            {
+                Debug.LogWarning("TFLink: ResetOdomTransform called on a non-base_link TFLink. This should not happen.");
+                return;
+            }
+
+            // Cache the initial position and yaw-only rotation
+            _odom_position = _transform.position;
+            Vector3 eulerAngles = _transform.rotation.eulerAngles;
+            _odom_rotation = Quaternion.Euler(0, eulerAngles.y, 0);
         }
 
         protected override IEnumerator UpdateSensor() { yield return null; }
