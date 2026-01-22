@@ -1,4 +1,5 @@
 using System;
+using Vector3 = UnityEngine.Vector3;
 
 namespace UnitySensors.Utils.Noise
 {
@@ -22,8 +23,14 @@ namespace UnitySensors.Utils.Noise
             _random = new Random(seed);
         }
 
+        /// <summary>
+        /// Generate a single value of noise based on standard deviation.
+        /// </summary>
         public double GetNoise(double sigma = 1.0d)
         {
+            // Make sure sigma is positive
+            sigma = Math.Abs(sigma);
+
             // Use spare value from previous call if available
             if (_spare.HasValue)
             {
@@ -49,6 +56,17 @@ namespace UnitySensors.Utils.Noise
 
             // Return the first result
             return sigma * (u * multiplier);
+        }
+
+        public Vector3 GetNoise(Vector3 sigmaVector)
+        {
+            // Implementation Note: GetNoise(1.0) returns N(0,1). 
+            // We then multiply by the specific sigma for that axis.
+            return new Vector3(
+                (float)(GetNoise(1.0) * sigmaVector.x),
+                (float)(GetNoise(1.0) * sigmaVector.y),
+                (float)(GetNoise(1.0) * sigmaVector.z)
+            );
         }
     }
 }
