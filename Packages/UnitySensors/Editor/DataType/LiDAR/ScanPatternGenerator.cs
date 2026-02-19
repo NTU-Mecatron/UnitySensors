@@ -30,6 +30,12 @@ namespace UnitySensors.DataType.LiDAR
         [SerializeField]
         private float[] _zenithAngles;
         [SerializeField]
+        private float _minZenithAngle;
+        [SerializeField]
+        private float _maxZenithAngle;
+        [SerializeField]
+        private int _zenithAngleResolution;
+        [SerializeField]
         private float _minAzimuthAngle;
         [SerializeField]
         private float _maxAzimuthAngle;
@@ -71,11 +77,15 @@ namespace UnitySensors.DataType.LiDAR
 
                 case Mode.FromSpecification:
 
-                    _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-                    _so.Update();
-                    EditorGUILayout.PropertyField(_so.FindProperty("_zenithAngles"), true);
-                    _so.ApplyModifiedProperties();
-                    EditorGUILayout.EndScrollView();
+                    //_scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+                    //_so.Update();
+                    //EditorGUILayout.PropertyField(_so.FindProperty("_zenithAngles"), true);
+                    //_so.ApplyModifiedProperties();
+                    //EditorGUILayout.EndScrollView();
+
+                    _minZenithAngle = EditorGUILayout.FloatField("Min Zenith Angle", _minZenithAngle);
+                    _maxZenithAngle = EditorGUILayout.FloatField("Max Zenith Angle", _maxZenithAngle);
+                    _zenithAngleResolution = EditorGUILayout.IntField("Zenith Angle Resolution", _zenithAngleResolution);
 
                     _minAzimuthAngle = EditorGUILayout.FloatField("Min Azimuth Angle", _minAzimuthAngle);
                     _maxAzimuthAngle = EditorGUILayout.FloatField("Max Azimuth Angle", _maxAzimuthAngle);
@@ -163,12 +173,21 @@ namespace UnitySensors.DataType.LiDAR
 
         private void GenerateFromSpecification()
         {
-            if (_zenithAngles == null || _zenithAngles.Length == 0 || _azimuthAngleResolution <= 0) return;
+            if (_zenithAngleResolution <= 0 || _azimuthAngleResolution <= 0) return;
 
             ScanPattern scan = ScriptableObject.CreateInstance<ScanPattern>();
 
-            scan.size = _zenithAngles.Length * _azimuthAngleResolution;
+            scan.size = _zenithAngleResolution * _azimuthAngleResolution;
             scan.scans = new float3[scan.size];
+
+            if (_zenithAngles == null || _zenithAngles.Length != _zenithAngleResolution)
+            {
+                _zenithAngles = new float[_zenithAngleResolution];
+                for (int i = 0; i < _zenithAngleResolution; i++)
+                {
+                    _zenithAngles[i] = Mathf.Lerp(_minZenithAngle, _maxZenithAngle, (float)i / _zenithAngleResolution);
+                }
+            }
 
             int index = 0;
             for (int azimuth = 0; azimuth < _azimuthAngleResolution; azimuth++)
@@ -184,13 +203,8 @@ namespace UnitySensors.DataType.LiDAR
             scan.minAzimuthAngle = _minAzimuthAngle;
             scan.maxAzimuthAngle = _maxAzimuthAngle;
 
-            scan.minZenithAngle = float.MaxValue;
-            scan.maxZenithAngle = float.MinValue;
-            foreach (float zenithAngle in _zenithAngles)
-            {
-                scan.minZenithAngle = Mathf.Min(scan.minZenithAngle, zenithAngle);
-                scan.maxZenithAngle = Mathf.Max(scan.maxZenithAngle, zenithAngle);
-            }
+            scan.minZenithAngle = _minZenithAngle;
+            scan.maxZenithAngle = _maxZenithAngle;
 
             AssetDatabase.CreateAsset(scan, "Assets/NewScanPattern.asset");
             AssetDatabase.SaveAssets();

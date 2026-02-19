@@ -24,6 +24,8 @@ namespace UnitySensors.ROS.Serializer.PointCloud
         private IInvertXJob _invertXJob;
         private NativeArray<byte> _data;
 
+        public HeaderSerializer Header { get => _header; set => _header = value; }
+
         public void SetSource(IPointCloudInterface<T> sourceInterface)
         {
             _sourceInterface = sourceInterface;
@@ -41,7 +43,7 @@ namespace UnitySensors.ROS.Serializer.PointCloud
             _msg.height = 1;
             _msg.width = (uint)_pointsNum;
             _msg.fields = PointUtilitiesROS.pointFields[typeof(T)];
-            _msg.is_bigendian = true;
+            _msg.is_bigendian = false;
             _msg.point_step = (uint)sizeOfPoint;
             _msg.row_step = (uint)dataSize;
             _msg.data = new byte[dataSize];
