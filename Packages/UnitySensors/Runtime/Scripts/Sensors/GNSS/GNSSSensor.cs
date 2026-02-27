@@ -8,18 +8,17 @@ namespace UnitySensors.Sensor.GNSS
 {
     public class GNSSSensor : UnitySensor, IGeoCoordinateInterface
     {
-        [SerializeField]
         private GeoCoordinateSystem _coordinateSystem;
-
         private Transform _transform;
 
         [SerializeField]
-        private GeoCoordinate _coordinate;
+        GeoCoordinate _coordinate;
         public GeoCoordinate coordinate { get => _coordinate; }
 
         protected override void Init()
         {
             _transform = this.transform;
+            _coordinateSystem = FindFirstObjectByType<GeoCoordinateSystem>();
         }
 
         protected override IEnumerator UpdateSensor()

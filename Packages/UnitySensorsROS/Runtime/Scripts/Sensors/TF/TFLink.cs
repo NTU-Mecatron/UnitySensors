@@ -34,18 +34,6 @@ namespace UnitySensors.Sensor.TF
             "Or it will use the items that you have assigned and do not auto-search for child links.")]
         TFLink[] _children;
 
-        //// Only appear in inspector if TfMessageMsgPublisher is present
-        //[SerializeField, Tooltip("If true, when this TFLink is used as a source for TfMessagePublisher, " +
-        //    "it will recursively gather TF data from its children. " +
-        //    "If false, it will only provide its own TF data without considering children." +
-        //    "\n\nIf this is true, _useNamespacedChildIds should be false. And vice versa.")]
-        //bool _recurseFindChildLinks = true;
-        //// Only appear in inspector if TfMessageMsgPublisher is present
-        //[SerializeField, Tooltip("If true, when this TFLink is used as a source for TfMessagePublisher, " +
-        //    "it will prepend the name of the robot to the frame ids. " +
-        //    "If false, it will use the frame ids as is.")]
-        //bool _useNamespacedChildIds = false;
-
         [Tooltip("Cached transform of this TFLink.")]
         Transform _transform;
 
@@ -74,11 +62,23 @@ namespace UnitySensors.Sensor.TF
                 _base_link_prefix = baseLinkName + "/"; // End with slash (eg. robot/)
             }
 
-            // Automatically find all direct children TFLink components if null
+            // Automatically find all children TFLink components if not assigned in editor
             if (_children == null || _children.Length == 0)
             {
-                List<TFLink> children = new ();
-                FindDirectChildrenTFLinks(transform, children);
+                List<TFLink> children = new();
+                if (IsMapLink(_frame_id))
+                {
+                    TFLink[] tfLinks = FindObjectsByType<TFLink>(FindObjectsSortMode.None);
+                    for (int i = 0; i < tfLinks.Length; i++)
+                    {
+                        if (tfLinks[i].IsBaseLink())
+                            children.Add(tfLinks[i]);
+                    }
+                }
+                else
+                {
+                    FindDirectChildrenTFLinks(transform, children);
+                }
                 _children = children.ToArray();
             }        
 
@@ -91,6 +91,7 @@ namespace UnitySensors.Sensor.TF
             }
         }
 
+        bool IsMapLink(string frameId) => frameId.Contains("map") || _frame_id.Contains("World");
         bool IsBaseLink(string frameId) => frameId.Contains("base_link");
         public bool IsBaseLink() => IsBaseLink(_frame_id);
 
@@ -143,7 +144,7 @@ namespace UnitySensors.Sensor.TF
             List<TFData> tfData = new();
 
             // Warn if map/world frame is not at origin with no rotation
-            if (_frame_id == "map" || _frame_id == "world")
+            if (IsMapLink(_frame_id))
             {
                 if (_transform.position != Vector3.zero || _transform.rotation != Quaternion.identity)
                 {
@@ -161,7 +162,7 @@ namespace UnitySensors.Sensor.TF
 
             // Correctly set the frame id for this link
             string prefix = (useBaseLinkNameAsPrefix) ? _base_link_prefix : "";
-            string frame_id = (_frame_id == "map" || _frame_id == "world") ? _frame_id : prefix + _frame_id + suffix;
+            string frame_id = (IsMapLink(_frame_id)) ? _frame_id : prefix + _frame_id + suffix;
 
             // Get TF data from all children
             foreach (TFLink child in _children)
@@ -186,7 +187,7 @@ namespace UnitySensors.Sensor.TF
             Quaternion relativeRot = Quaternion.Inverse(parentTransform.rotation) * _transform.rotation;
 
             // Use ENU for map/world/odom frames, FLU for body frames and save this setting for the TFMessageMsgSerializer to perform the actual conversion
-            CoordinateSpaceSelection positionFrame = (parentFrameId == "map" || parentFrameId == "world" || parentFrameId == "odom") 
+            CoordinateSpaceSelection positionFrame = (IsMapLink(parentFrameId) || parentFrameId == "odom") 
                                                 ? CoordinateSpaceSelection.ENU : CoordinateSpaceSelection.FLU;
             // ENU frame will introduct a 90deg offset (if Z-axis is North) while FLU keep things the same
             CoordinateSpaceSelection rotationFrame = (IsBaseLink(_frame_id)) 

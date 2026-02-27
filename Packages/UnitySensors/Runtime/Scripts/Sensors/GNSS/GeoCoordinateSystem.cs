@@ -7,8 +7,7 @@ namespace UnitySensors.Sensor.GNSS
 {
     public class GeoCoordinateSystem : MonoBehaviour
     {
-        [SerializeField]
-        private GeoCoordinate _coordinate = new GeoCoordinate(35.71020206575301, 139.81070039691542, 3.0f);
+        public GeoCoordinate coordinate = new(35.71020206575301, 139.81070039691542, 3.0f);
 
         private Transform _transform;
         private GeoCoordinateConverter _converter;
@@ -16,7 +15,7 @@ namespace UnitySensors.Sensor.GNSS
         private void Awake()
         {
             _transform = this.transform;
-            _converter = new GeoCoordinateConverter(_coordinate);
+            _converter = new GeoCoordinateConverter(coordinate);
         }
 
         public GeoCoordinate GetCoordinate(Vector3 worldPosition)

@@ -27,7 +27,7 @@ namespace UnitySensors.ROS.Serializer.Tf2
         public bool useBaseLinkNameAsPrefix = false;
 
         [Tooltip("Add a suffix to all link name if not null. For example, base_link -> base_link_gt.")]
-        public string suffix = "_gt";
+        public string suffix = "";
 
         // Does not need to be exposed in inspector because frame_id is not needed and header time is automatically found
         [SerializeField, HideInInspector]

@@ -25,13 +25,13 @@ namespace UnitySensors.Sensor.LiDAR
 
         private PointCloud<PointXYZI> _pointCloud;
 
-        protected ScanPattern scanPattern { get => _scanPattern; }
-        protected float minRange { get => _minRange; }
-        protected float maxRange { get => _maxRange; }
-        protected float gaussianNoiseSigma { get => _gaussianNoiseSigma; }
-        protected float maxIntensity { get => _maxIntensity; }
+        public ScanPattern scanPattern { get => _scanPattern; set => _scanPattern = value; }
+        public float minRange { get => _minRange; set => _minRange = value; }
+        public float maxRange { get => _maxRange; set => _maxRange = value; }
+        public float gaussianNoiseSigma { get => _gaussianNoiseSigma; set => _gaussianNoiseSigma = value; }
+        public float maxIntensity { get => _maxIntensity; set => _maxIntensity = value; }
         public PointCloud<PointXYZI> pointCloud { get => _pointCloud; }
-        public int pointsNum { get => _pointsNumPerScan; }
+        public int pointsNum { get => _pointsNumPerScan; set => _pointsNumPerScan = value; }
 
         protected override void Init()
         {
