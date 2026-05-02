@@ -42,12 +42,14 @@ namespace UnitySensors.ROS.Utils.Namespacing
                 if (parent.TryGetComponent<NamespaceManager>(out var parentNamespaceManager))
                 {
                     resolvedNamespace = $"{parentNamespaceManager.CurrentNamespace}/{resolvedNamespace}".Replace("//", "/");
+                    if (parentNamespaceManager.CurrentNamespace.StartsWith("/"))
+                        break; // Found an absolute namespace, stop searching
                 }
 
-                if (resolvedNamespace.StartsWith("/"))
-                {
-                    break; // Found an absolute namespace, stop searching
-                }
+                //if (resolvedNamespace.StartsWith("/"))
+                //{
+                //    break; // Found an absolute namespace, stop searching
+                //}
                 parent = parent.parent;
             }
 
