@@ -22,7 +22,7 @@ namespace UnitySensors.Sensor
         public Action onSensorUpdateComplete;
         public float dt { get => _frequency_inv; }
         public float time { get => _time; }
-        public float frequency
+        public float Frequency
         {
             get => _frequency;
             set
@@ -90,7 +90,7 @@ namespace UnitySensors.Sensor
         }
         private void OnValidate()
         {
-            frequency = _frequency;
+            Frequency = _frequency;
         }
 
         public virtual IEnumerator UpdateSensorOnce()
