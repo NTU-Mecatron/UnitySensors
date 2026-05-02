@@ -215,7 +215,7 @@ namespace UnitySensors.Sensor.Camera
                 if (_lastFrameTime > 0)
                 {
                     float currentFPS = 1.0f / currentFrameTime;
-                    float targetFPS = frequency; // Use sensor frequency as target
+                    float targetFPS = Frequency; // Use sensor frequency as target
                     if (currentFPS < targetFPS * 0.8f) // If FPS drops below 80% of target
                     {
                         _raycastResolutionScale = Mathf.Max(0.1f, _raycastResolutionScale - 0.05f);

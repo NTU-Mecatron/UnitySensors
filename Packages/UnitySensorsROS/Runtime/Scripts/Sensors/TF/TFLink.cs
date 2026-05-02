@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -52,48 +53,65 @@ namespace UnitySensors.Sensor.TF
 
         protected override void Init()
         {
-            _transform = this.transform;
+            RefreshCache();
+
+            if (IsBaseLink(_frame_id))
+                ResetOdomTransform();
+
+            // Populate the children list
+            RefreshChildren();
+        }
+
+        /// <summary>
+        /// Refresh cache data
+        /// </summary>
+        public void RefreshCache()
+        {
+            if (_transform == null) _transform = this.transform;
             _frame_id = _frame_id.ToLower().Replace(" ", "_");
 
-            // Recursively look for parent TFLink with frame id "base_link" to cache
             string baseLinkName = FindBaseLinkGameObjectName(_transform);
             if (!string.IsNullOrEmpty(baseLinkName))
+                _base_link_prefix = baseLinkName + "/";
+            else
+                _base_link_prefix = "";
+        }
+
+        /// <summary>
+        /// Recalculates the children array. Call this whenever child links are dynamically added or removed.
+        /// </summary>
+        public void RefreshChildren()
+        {
+            List<TFLink> children = new();
+            if (IsMapLink(_frame_id))
             {
-                _base_link_prefix = baseLinkName + "/"; // End with slash (eg. robot/)
+                TFLink[] tfLinks = FindObjectsByType<TFLink>(FindObjectsSortMode.None);
+                for (int i = 0; i < tfLinks.Length; i++)
+                {
+                    if (tfLinks[i].IsBaseLink())
+                        children.Add(tfLinks[i]);
+                }
             }
-
-            // Automatically find all children TFLink components if not assigned in editor
-            if (_children == null || _children.Length == 0)
+            else
             {
-                List<TFLink> children = new();
-                if (IsMapLink(_frame_id))
-                {
-                    TFLink[] tfLinks = FindObjectsByType<TFLink>(FindObjectsSortMode.None);
-                    for (int i = 0; i < tfLinks.Length; i++)
-                    {
-                        if (tfLinks[i].IsBaseLink())
-                            children.Add(tfLinks[i]);
-                    }
-                }
-                else
-                {
-                    FindDirectChildrenTFLinks(transform, children);
-                }
-                _children = children.ToArray();
-            }        
-
+                FindDirectChildrenTFLinks(transform, children);
+            }
+            _children = children.ToArray();
+            
             // Remove null or inactive children
             _children = _children.Where(child => child != null && child.gameObject.activeInHierarchy).ToArray();
 
-            if (IsBaseLink(_frame_id))
+            foreach (var child in _children)
             {
-                ResetOdomTransform();
+                if (child != null)
+                    child.RefreshCache();
             }
         }
 
         bool IsMapLink(string frameId) => frameId.Contains("map") || _frame_id.Contains("World");
         bool IsBaseLink(string frameId) => frameId.Contains("base_link");
         public bool IsBaseLink() => IsBaseLink(_frame_id);
+        public bool IsMapLink() => IsMapLink(_frame_id);
 
         /// <summary>
         /// Recursively searches up the parent hierarchy for a TFLink with frame_id "base_link"
