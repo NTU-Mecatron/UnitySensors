@@ -23,6 +23,8 @@ namespace UnitySensors.ROS.Serializer.Sensor
 
         private ICameraInterface _sourceInterface;
 
+        public HeaderSerializer Header { get => _header; set => _header = value; }
+
         public override void Init()
         {
             base.Init();
