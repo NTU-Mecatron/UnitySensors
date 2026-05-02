@@ -72,7 +72,10 @@ namespace UnitySensors.Sensor
             {
                 yield return new WaitUntil(() =>
                 {
-                    _dt += Time.deltaTime;
+                    if (isActiveAndEnabled)
+                    {
+                        _dt += Time.deltaTime;
+                    }
                     return _dt >= _frequency_inv;
                 });
 
