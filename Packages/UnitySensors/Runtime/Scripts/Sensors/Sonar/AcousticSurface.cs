@@ -12,7 +12,7 @@ namespace UnitySensors.Sensor.Sonar
     /// <summary>
     /// Tags a collider with a scalar acoustic reflectivity in [0, 1]. Registered into
     /// <see cref="AcousticSurfaceRegistry"/> from Awake so sonar jobs can resolve it
-    /// Burst-side from <c>RaycastHit.colliderInstanceID</c>. Colliders without this
+    /// Burst-side from <c>RaycastHit.colliderEntityId</c>. Colliders without this
     /// component fall back to the sensor's <c>DefaultReflectivity</c>.
     /// </summary>
     [RequireComponent(typeof(Collider))]

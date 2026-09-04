@@ -18,7 +18,6 @@ namespace UnitySensors.Sensor.Sonar
     /// Multibeam echosounder: a single beam looking straight down, its rays fanned out
     /// about the sensor's forward axis.
     /// </summary>
-    [AddComponentMenu("MDS/Sensor/Sonar/Multibeam")]
     public class MultibeamSonarSensor : SonarSensor
     {
         // UnitySensor.OnValidate is private, so this hides it rather than overrides it.

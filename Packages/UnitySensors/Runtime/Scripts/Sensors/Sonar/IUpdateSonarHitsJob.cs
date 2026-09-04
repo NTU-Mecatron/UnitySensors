@@ -12,9 +12,9 @@ using Unity.Mathematics;
 namespace UnitySensors.Sensor.Sonar
 {
     /// <summary>
-    /// Per-cycle: turns raw RaycastHit results into sonar-frame hit data (local point/normal,
+    /// Per-cycle: turns raw RaycastHit results into sonar-frame hit data (local point +
     /// Lambertian return intensity). Material reflectivity is resolved Burst-side from
-    /// <see cref="AcousticSurfaceRegistry"/> keyed on <c>RaycastHit.colliderInstanceID</c>
+    /// <see cref="AcousticSurfaceRegistry"/> keyed on <c>RaycastHit.colliderEntityId</c>
     /// (a blittable substitute for the managed <c>hit.collider</c>), so the whole pipeline
     /// runs as one job chain with no main-thread Collider access in the middle.
     /// </summary>
@@ -24,7 +24,7 @@ namespace UnitySensors.Sensor.Sonar
         [ReadOnly] public NativeArray<RaycastHit> Results;
         [ReadOnly] public NativeArray<float3> LocalDirections;
         [ReadOnly] public NativeArray<float> BeamProfile;          // length == NumRaysPerBeam
-        [ReadOnly] public NativeHashMap<int, float> ReflectivityMap; // colliderInstanceID -> reflectivity, sealed at scene load
+        [ReadOnly] public NativeHashMap<int, float> ReflectivityMap; // colliderEntityId -> reflectivity, sealed at scene load
 
         public float DefaultReflectivity;                          // used for colliders with no AcousticSurface
         public int NumRaysPerBeam;
@@ -32,20 +32,18 @@ namespace UnitySensors.Sensor.Sonar
         public quaternion WorldToLocalRotation;
 
         [WriteOnly] public NativeArray<float3> LocalPoints;
-        [WriteOnly] public NativeArray<float3> LocalNormals;
         [WriteOnly] public NativeArray<float> ReturnIntensities;
 
         public void Execute(int i)
         {
             RaycastHit hit = Results[i];
-            // colliderInstanceID is the Burst-safe substitute for `hit.collider` (0 == miss).
+            // colliderEntityId is the Burst-safe substitute for `hit.collider` (0 == miss);
+            // it implicitly converts to the int key used by ReflectivityMap.
             bool didHit = hit.colliderEntityId != 0;
 
             float3 localDir = LocalDirections[i];
-            float3 localNormal = math.normalizesafe(math.mul(WorldToLocalRotation, (float3)hit.normal));
 
             LocalPoints[i] = didHit ? localDir * hit.distance : float3.zero;
-            LocalNormals[i] = localNormal;
 
             if (!didHit)
             {
@@ -62,6 +60,7 @@ namespace UnitySensors.Sensor.Sonar
             // abs(cos(Vector3.Angle(...))) but skips the acos/cos round-trip; angle is
             // rotation-invariant so local-frame vectors give the same result as the
             // equivalent world-space computation.
+            float3 localNormal = math.normalizesafe(math.mul(WorldToLocalRotation, (float3)hit.normal));
             float cosAngle = math.dot(math.normalizesafe(-localDir), localNormal);
             float hitAngleIntensity = math.abs(cosAngle);
 

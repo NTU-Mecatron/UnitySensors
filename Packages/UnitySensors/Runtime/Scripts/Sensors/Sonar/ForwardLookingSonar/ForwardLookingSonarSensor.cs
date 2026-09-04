@@ -18,7 +18,6 @@ namespace UnitySensors.Sensor.Sonar
     /// Forward-looking sonar: vertical fans swept side-to-side across <see cref="FLSFOVDeg"/>,
     /// each fan tilted down by <see cref="TiltAngleDeg"/>.
     /// </summary>
-    [AddComponentMenu("MDS/Sensor/Sonar/Forward-Looking")]
     public class ForwardLookingSonarSensor : SonarSensor
     {
         [Header("Forward-Looking Sonar")]
