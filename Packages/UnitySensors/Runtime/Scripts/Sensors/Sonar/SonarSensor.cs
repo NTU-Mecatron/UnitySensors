@@ -84,7 +84,19 @@ namespace UnitySensors.Sensor.Sonar
         // Called by UnitySensor.Awake().
         protected override void Init()
         {
+            _localPoints = new NativeArray<float3>(TotalRayCount, Allocator.Persistent);
             _localDirections = new NativeArray<float3>(TotalRayCount, Allocator.Persistent);
+            _returnIntensities = new NativeArray<float>(TotalRayCount, Allocator.Persistent);
+            _beamProfile = new NativeArray<float>(NumRaysPerBeam, Allocator.Persistent);
+
+            _pointCloud = new PointCloud<PointXYZI>
+            {
+                points = new NativeArray<PointXYZI>(TotalRayCount, Allocator.Persistent)
+            };
+
+            _raycastHits = new NativeArray<RaycastHit>(TotalRayCount, Allocator.Persistent);
+            _raycastCommands = new NativeArray<RaycastCommand>(TotalRayCount, Allocator.Persistent);
+
             FillLocalDirections(_localDirections);
             SetupJobs();
             OnInit();
@@ -105,9 +117,6 @@ namespace UnitySensors.Sensor.Sonar
 
         private void SetupJobs()
         {
-            _raycastHits = new NativeArray<RaycastHit>(TotalRayCount, Allocator.Persistent);
-            _raycastCommands = new NativeArray<RaycastCommand>(TotalRayCount, Allocator.Persistent);
-
             _updateRayCastCommandsJob = new IUpdateRaycastCommandsJob
             {
                 LocalDirections = _localDirections,
@@ -116,12 +125,7 @@ namespace UnitySensors.Sensor.Sonar
                 MaxRange = MaxRange,
                 Commands = _raycastCommands
             };
-
-            _localPoints = new NativeArray<float3>(TotalRayCount, Allocator.Persistent);
-            _returnIntensities = new NativeArray<float>(TotalRayCount, Allocator.Persistent);
-
-            _beamProfile = new NativeArray<float>(NumRaysPerBeam, Allocator.Persistent);
-
+            
             _updateSonarHitsJob = new IUpdateSonarHitsJob
             {
                 Results = _raycastHits,
@@ -133,11 +137,6 @@ namespace UnitySensors.Sensor.Sonar
                 WorldToLocalRotation = quaternion.identity,
                 LocalPoints = _localPoints,
                 ReturnIntensities = _returnIntensities
-            };
-
-            _pointCloud = new PointCloud<PointXYZI>
-            {
-                points = new NativeArray<PointXYZI>(TotalRayCount, Allocator.Persistent)
             };
 
             _packPointCloudJob = new IPackSonarPointCloudJob
@@ -154,9 +153,6 @@ namespace UnitySensors.Sensor.Sonar
             _updateRayCastCommandsJob.Origin = transform.position;
             _updateRayCastCommandsJob.Rotation = transform.rotation;
 
-            // Pose is fixed for this cycle, so capture the world->local rotation up front and
-            // let the whole pipeline run as one dependency chain -- no main-thread sync in
-            // the middle for material resolution anymore.
             _updateSonarHitsJob.WorldToLocalRotation = math.inverse((quaternion)transform.rotation);
 
             // Bind (and seal) the scene reflectivity map on the first tick. Every
