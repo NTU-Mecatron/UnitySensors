@@ -39,7 +39,7 @@ namespace UnitySensors.Sensor.Sonar
             RaycastHit hit = Results[i];
             // colliderEntityId is the Burst-safe substitute for `hit.collider` (0 == miss);
             // it implicitly converts to the int key used by ReflectivityMap.
-            bool didHit = hit.colliderEntityId != 0;
+            bool didHit = hit.colliderEntityId != 0 && hit.distance <= MaxRange;
 
             float3 localDir = LocalDirections[i];
 
