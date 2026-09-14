@@ -26,13 +26,17 @@ namespace UnitySensors.Sensor.Sonar
         [Tooltip("Field of view swept by the beams.")]
         public float FLSFOVDeg = 30;
 
-        public float DegreesPerBeamInFLS => FLSFOVDeg / (NumBeams - 1);
+        // NumBeams == 1 has no spread to divide across; guarded to avoid a division by
+        // zero (FLSFOVDeg / 0 = Infinity, which turns into NaN as soon as it's multiplied
+        // by a beam index of 0 in IFlsBeamJob, corrupting every ray direction).
+        public float DegreesPerBeamInFLS => NumBeams > 1 ? FLSFOVDeg / (NumBeams - 1) : 0f;
 
         // UnitySensor.OnValidate is private, so this hides it rather than overrides it.
         // End with `Frequency = Frequency;` so the base re-derives its cached _frequency_inv.
         private void OnValidate()
         {
             if (NumRaysPerBeam <= 0) NumRaysPerBeam = 1;
+            if (NumBeams <= 0) NumBeams = 1;
             Frequency = Frequency;
         }
 
@@ -42,6 +46,7 @@ namespace UnitySensors.Sensor.Sonar
             {
                 Directions = directions,
                 NumRaysPerBeam = NumRaysPerBeam,
+                NumBeams = NumBeams,
                 LocalUp = Vector3.up,
                 LocalForward = Vector3.forward,
                 LocalRight = Vector3.right,

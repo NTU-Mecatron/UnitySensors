@@ -23,6 +23,7 @@ namespace UnitySensors.Sensor.Sonar
     {
         [WriteOnly] public NativeArray<float3> Directions;
         public int NumRaysPerBeam;
+        public int NumBeams;
         public Vector3 LocalUp;
         public Vector3 LocalForward;
         public Vector3 LocalRight;
@@ -46,8 +47,10 @@ namespace UnitySensors.Sensor.Sonar
             // then we rotate _that_ to the ray angle within the beam, around the side-axis
             // plus the tilt angle which is measured from the horizontal plane down
             direction = Quaternion.AngleAxis(rayAngle + TiltAngleDeg, LocalRight) * direction;
-            // then we rotate it to the beam angle, around the UP axis
-            var beamAngle = (beamNum * DegreesPerBeamInFLS) - FLSFOVDeg / 2;
+            // then we rotate it to the beam angle, around the UP axis. A single beam has no
+            // spread to center across, so it points straight down the sweep's center (0)
+            // instead of landing on the -FOV/2 edge the general formula would otherwise give.
+            var beamAngle = NumBeams > 1 ? (beamNum * DegreesPerBeamInFLS) - FLSFOVDeg / 2 : 0f;
             direction = Quaternion.AngleAxis(beamAngle, LocalUp) * direction;
 
             Directions[i] = direction;

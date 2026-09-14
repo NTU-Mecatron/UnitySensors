@@ -35,8 +35,10 @@ namespace UnitySensors.Sensor.Sonar
             // MBES is just one beam looking down directly. Simplest.
             // start a beam looking directly down
             var direction = -LocalUp;
-            // we want 0 degrees in the center and then +-Breadth/2 on the sides.
-            var rayAngle = (rayNum * DegreesPerRayInBeam) - BeamBreadthDeg / 2;
+            // we want 0 degrees in the center and then +-Breadth/2 on the sides. A single
+            // ray has no spread to center across, so it points straight down (0) instead
+            // of landing on the -Breadth/2 edge the general formula would otherwise give.
+            var rayAngle = NumRaysPerBeam > 1 ? (rayNum * DegreesPerRayInBeam) - BeamBreadthDeg / 2 : 0f;
             // rotate it around the forward axis by its ray number in the beam
             // offset half-way so the middle is directly down.
             direction = Quaternion.AngleAxis(rayAngle, LocalForward) * direction;

@@ -48,12 +48,10 @@ namespace UnitySensors.Sensor.Sonar
                  "(e.g. 255) if a downstream consumer expects a wider range.")]
         public float PointCloudIntensityScale = 1f;
 
-        // Lowest and highest hit heights, for visualization or other purposes.
-        [HideInInspector] public float HitsMinHeight = Mathf.Infinity;
-        [HideInInspector] public float HitsMaxHeight = 0f;
-
-        public int TotalRayCount => NumRaysPerBeam * NumBeams;
-        public float DegreesPerRayInBeam => BeamBreadthDeg / (NumRaysPerBeam - 1);
+        private int _totalRayCount;
+        public int TotalRayCount => _totalRayCount;
+        private float _degreePerRayInBeam;
+        public float DegreesPerRayInBeam => _degreePerRayInBeam;
 
         // IPointCloudInterface<PointXYZI>: per-cycle hits as a sensor-local PointXYZI cloud.
         private PointCloud<PointXYZI> _pointCloud;
@@ -84,18 +82,24 @@ namespace UnitySensors.Sensor.Sonar
         // Called by UnitySensor.Awake().
         protected override void Init()
         {
-            _localPoints = new NativeArray<float3>(TotalRayCount, Allocator.Persistent);
-            _localDirections = new NativeArray<float3>(TotalRayCount, Allocator.Persistent);
-            _returnIntensities = new NativeArray<float>(TotalRayCount, Allocator.Persistent);
+            _totalRayCount = NumRaysPerBeam * NumBeams;
+            _degreePerRayInBeam = NumRaysPerBeam > 1 ? BeamBreadthDeg / (NumRaysPerBeam - 1) : 0f;
+
+            _localPoints = new NativeArray<float3>(_totalRayCount, Allocator.Persistent);
+            _localDirections = new NativeArray<float3>(_totalRayCount, Allocator.Persistent);
+            _returnIntensities = new NativeArray<float>(_totalRayCount, Allocator.Persistent);
+
+            // Init beam profile intensity as 1.0f for every raycasts
             _beamProfile = new NativeArray<float>(NumRaysPerBeam, Allocator.Persistent);
+            for (int i = 0; i < NumRaysPerBeam; i++) _beamProfile[i] = 1f;
 
             _pointCloud = new PointCloud<PointXYZI>
             {
-                points = new NativeArray<PointXYZI>(TotalRayCount, Allocator.Persistent)
+                points = new NativeArray<PointXYZI>(_totalRayCount, Allocator.Persistent)
             };
 
-            _raycastHits = new NativeArray<RaycastHit>(TotalRayCount, Allocator.Persistent);
-            _raycastCommands = new NativeArray<RaycastCommand>(TotalRayCount, Allocator.Persistent);
+            _raycastHits = new NativeArray<RaycastHit>(_totalRayCount, Allocator.Persistent);
+            _raycastCommands = new NativeArray<RaycastCommand>(_totalRayCount, Allocator.Persistent);
 
             FillLocalDirections(_localDirections);
             SetupJobs();
