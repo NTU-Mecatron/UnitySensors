@@ -32,7 +32,7 @@ namespace UnitySensors.Sensor.Sonar
         public quaternion WorldToLocalRotation;
 
         [WriteOnly] public NativeArray<float3> LocalPoints;
-        [WriteOnly] public NativeArray<float> ReturnIntensities;
+        [WriteOnly] public NativeArray<float> Intensities;
 
         public void Execute(int i)
         {
@@ -44,7 +44,7 @@ namespace UnitySensors.Sensor.Sonar
 
             if (!didHit)
             {
-                ReturnIntensities[i] = 0f;
+                Intensities[i] = 0f;
                 return;
             }
 
@@ -69,8 +69,7 @@ namespace UnitySensors.Sensor.Sonar
                 : DefaultReflectivity;
 
             // Lambert's cosine law, K = 1.
-            float intensity = beamIntensity * hitDistIntensity * hitAngleIntensity * reflectivity;
-            ReturnIntensities[i] = math.clamp(intensity, 0f, 1f);
+            Intensities[i] = beamIntensity * hitDistIntensity * hitAngleIntensity * reflectivity;
         }
     }
 }

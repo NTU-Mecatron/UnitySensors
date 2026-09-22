@@ -38,6 +38,8 @@ namespace UnitySensors.Sensor.Sonar
         public float BeamBreadthDeg = 90;
         [Tooltip("How many beams(fans) are in this arrangement of sonar.")]
         public int NumBeams = 1;
+        [Tooltip("Number of range bins on Sonar Image")]
+        public int NumRangeBins = 200;
         [Tooltip("Maximum range of ray cast")]
         public float MaxRange = 100;
         [Tooltip("Reflectivity for any surface without an AcousticSurface component, in [0, 1].")]
@@ -47,6 +49,28 @@ namespace UnitySensors.Sensor.Sonar
                  "the PointXYZI point cloud. Leave at 1 to keep the physical value; raise it " +
                  "(e.g. 255) if a downstream consumer expects a wider range.")]
         public float PointCloudIntensityScale = 1f;
+        [Tooltip("Mean of the per-ray multiplicative intensity speckle noise. 1 = unbiased.")]
+        public float ExponentialNoiseMean = 1f;
+        [Tooltip("Mean extra distance (world units) added to each ray's range by " +
+                 "reverberation/multipath spread. 0 disables it.")]
+        public float RangeNoiseMean = 0.05f;
+        [Tooltip("Mean of Rayleigh Noise")]
+        public float RayleighNoiseMean = 1;
+        [Tooltip("Mean of the image-level Gaussian noise term.")]
+        public float ImageNoiseNormalMean = 0f;
+        [Tooltip("Std-dev of the image-level Gaussian noise term. Kept small relative to " +
+                 "the 0.5 baseline multiplier so it rarely flips sign.")]
+        public float ImageNoiseNormalSigma = 0.1f;
+        [Tooltip("Scale of the image-level Rayleigh (additive) noise term.")]
+        public float ImageNoiseRayleighSigma = 0.02f;
+
+        /// <summary>
+        /// Total azimuth FOV the sonar image's columns sweep, in degrees; 0 if the sensor
+        /// has no azimuth axis in its image (e.g. MBES, which always has NumBeams == 1).
+        /// Overridden per modality since the FOV concept only exists on beam-sweeping
+        /// sensors like <see cref="ForwardLookingSonarSensor"/>.
+        /// </summary>
+        protected virtual float ImageFovDeg => 0f;
 
         private int _totalRayCount;
         public int TotalRayCount => _totalRayCount;
@@ -64,13 +88,32 @@ namespace UnitySensors.Sensor.Sonar
         private NativeArray<RaycastCommand> _raycastCommands;
         private IUpdateRaycastCommandsJob _updateRayCastCommandsJob;
         private IUpdateSonarHitsJob _updateSonarHitsJob;
+        private IApplyDiffusionNoiseJob _applyDiffusionNoiseJob;
         private IPackSonarPointCloudJob _packPointCloudJob;
+        private IPackSonarImageJob _packSonarImageJob;
+        private IApplySonarImageNoiseJob _applySonarImageNoiseJob;
 
-        // Data passed to job system
+        // Sonar Hits Data
         private NativeArray<float3> _localPoints;
         private NativeArray<float3> _localDirections;
         private NativeArray<float> _beamProfile;
-        private NativeArray<float> _returnIntensities;
+        private NativeArray<float> _intensities;
+
+        // Sonar Image Data
+        private NativeArray<float> _sonarImage;
+        /// <summary>
+        /// The fully-processed, per-cycle bearing/range image (row-major: idx = range bin *
+        /// NumBeams + beam), after averaging and both noise stages. Values are not clamped
+        /// to any fixed range -- consumers quantize/clamp at serialization time. Re-read
+        /// this every cycle rather than caching the handle; it isn't reallocated across the
+        /// sensor's lifetime, but reading it fresh matches the same defensive pattern used
+        /// for <see cref="pointCloud"/>.
+        /// </summary>
+        public NativeArray<float> SonarImage => _sonarImage;
+
+        // Strictly-increasing per-cycle seed for _applyDiffusionNoiseJob, so the speckle
+        // pattern decorrelates cycle to cycle instead of freezing to ray index.
+        private uint _noiseCycleSeed;
 
         public static (int, int) BeamNumRayNumFromRayIndex(int i, int numRaysPerBeam)
         {
@@ -87,7 +130,7 @@ namespace UnitySensors.Sensor.Sonar
 
             _localPoints = new NativeArray<float3>(_totalRayCount, Allocator.Persistent);
             _localDirections = new NativeArray<float3>(_totalRayCount, Allocator.Persistent);
-            _returnIntensities = new NativeArray<float>(_totalRayCount, Allocator.Persistent);
+            _intensities = new NativeArray<float>(_totalRayCount, Allocator.Persistent);
 
             // Init beam profile intensity as 1.0f for every raycasts
             _beamProfile = new NativeArray<float>(NumRaysPerBeam, Allocator.Persistent);
@@ -97,6 +140,8 @@ namespace UnitySensors.Sensor.Sonar
             {
                 points = new NativeArray<PointXYZI>(_totalRayCount, Allocator.Persistent)
             };
+
+            _sonarImage = new NativeArray<float>(NumBeams * NumRangeBins, Allocator.Persistent);
 
             _raycastHits = new NativeArray<RaycastHit>(_totalRayCount, Allocator.Persistent);
             _raycastCommands = new NativeArray<RaycastCommand>(_totalRayCount, Allocator.Persistent);
@@ -140,15 +185,46 @@ namespace UnitySensors.Sensor.Sonar
                 MaxRange = MaxRange,
                 WorldToLocalRotation = quaternion.identity,
                 LocalPoints = _localPoints,
-                ReturnIntensities = _returnIntensities
+                Intensities = _intensities
+            };
+
+            _applyDiffusionNoiseJob = new IApplyDiffusionNoiseJob
+            {
+                LocalPoints = _localPoints,
+                Intensities = _intensities,
+                IntensityNoiseMean = ExponentialNoiseMean,
+                RangeNoiseMean = RangeNoiseMean,
+                Seed = _noiseCycleSeed
             };
 
             _packPointCloudJob = new IPackSonarPointCloudJob
             {
                 LocalPoints = _localPoints,
-                ReturnIntensities = _returnIntensities,
+                ReturnIntensities = _intensities,
                 IntensityScale = PointCloudIntensityScale,
                 Points = _pointCloud.points
+            };
+
+            _packSonarImageJob = new IPackSonarImageJob
+            {
+                LocalPoints = _pointCloud.points,
+                NumBeams = NumBeams,
+                NumRaysPerBeam = NumRaysPerBeam,
+                NumRangeBins = NumRangeBins,
+                MaxRange = MaxRange,
+                Image = _sonarImage
+            };
+
+            _applySonarImageNoiseJob = new IApplySonarImageNoiseJob
+            {
+                Image = _sonarImage,
+                NumBeams = NumBeams,
+                NumRangeBins = NumRangeBins,
+                MaxRange = MaxRange,
+                FovDeg = ImageFovDeg,
+                NormalMean = ImageNoiseNormalMean,
+                NormalSigma = ImageNoiseNormalSigma,
+                RayleighSigma = ImageNoiseRayleighSigma
             };
         }
 
@@ -165,10 +241,19 @@ namespace UnitySensors.Sensor.Sonar
             // no-op on later cycles.
             _updateSonarHitsJob.ReflectivityMap = AcousticSurfaceRegistry.GetSealed();
 
+            // Refreshed every cycle so IApplyDiffusionNoiseJob / IApplySonarImageNoiseJob
+            // don't replay the same noise draw forever (see their Seed fields for why).
+            _applyDiffusionNoiseJob.Seed = _noiseCycleSeed;
+            _applySonarImageNoiseJob.Seed = _noiseCycleSeed;
+            _noiseCycleSeed++;
+
             JobHandle buildRayCastCommandsJobHandle = _updateRayCastCommandsJob.Schedule(TotalRayCount, 10);
             JobHandle raycastJobHandle = RaycastCommand.ScheduleBatch(_raycastCommands, _raycastHits, 20, buildRayCastCommandsJobHandle);
             JobHandle updateSonarHitsJob = _updateSonarHitsJob.Schedule(TotalRayCount, 20, raycastJobHandle);
-            _jobHandle = _packPointCloudJob.Schedule(TotalRayCount, 64, updateSonarHitsJob);
+            JobHandle applyDiffusionNoiseJob = _applyDiffusionNoiseJob.Schedule(TotalRayCount, 20, updateSonarHitsJob);
+            JobHandle packPointCloudJob = _packPointCloudJob.Schedule(TotalRayCount, 64, applyDiffusionNoiseJob);
+            JobHandle packSonarImageJob = _packSonarImageJob.Schedule(NumBeams, 1, packPointCloudJob);
+            _jobHandle = _applySonarImageNoiseJob.Schedule(NumBeams * NumRangeBins, 64, packSonarImageJob);
             _jobHandle.Complete();
 
             yield return null;
@@ -185,7 +270,8 @@ namespace UnitySensors.Sensor.Sonar
             if (_localDirections.IsCreated) _localDirections.Dispose();
             if (_beamProfile.IsCreated) _beamProfile.Dispose();
             if (_localPoints.IsCreated) _localPoints.Dispose();
-            if (_returnIntensities.IsCreated) _returnIntensities.Dispose();
+            if (_intensities.IsCreated) _intensities.Dispose();
+            if (_sonarImage.IsCreated) _sonarImage.Dispose();
             if (_pointCloud != null && _pointCloud.points.IsCreated) _pointCloud.Dispose();
         }
     }

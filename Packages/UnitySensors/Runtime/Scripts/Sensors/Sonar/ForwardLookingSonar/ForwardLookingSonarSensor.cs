@@ -31,6 +31,8 @@ namespace UnitySensors.Sensor.Sonar
         // by a beam index of 0 in IFlsBeamJob, corrupting every ray direction).
         public float DegreesPerBeamInFLS => NumBeams > 1 ? FLSFOVDeg / (NumBeams - 1) : 0f;
 
+        protected override float ImageFovDeg => FLSFOVDeg;
+
         // UnitySensor.OnValidate is private, so this hides it rather than overrides it.
         // End with `Frequency = Frequency;` so the base re-derives its cached _frequency_inv.
         private void OnValidate()

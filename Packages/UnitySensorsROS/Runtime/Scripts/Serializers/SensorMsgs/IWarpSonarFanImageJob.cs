@@ -13,7 +13,7 @@ namespace UnitySensors.ROS.Serializer.Sensor
     [BurstCompile]
     internal struct IWarpSonarFanImageJob : IJobParallelFor
     {
-        [ReadOnly] public NativeArray<byte> Raw; // SrcWidth x SrcHeight
+        [ReadOnly] public NativeArray<float> Raw; // SrcWidth x SrcHeight, normalized (not yet 0-255)
         public int SrcWidth;
         public int SrcHeight;
         public float FovRad;
@@ -60,7 +60,9 @@ namespace UnitySensors.ROS.Serializer.Sensor
         private float SampleOrBorder(int r, int c)
         {
             if (r < 0 || r >= SrcHeight || c < 0 || c >= SrcWidth) return BorderValue;
-            return math.clamp(Raw[r * SrcWidth + c] * Contrast, 0f, 255f);
+            // Raw is normalized, not yet a display byte -- the 255 scale-up happens here,
+            // alongside Contrast (cv2.convertScaleAbs alpha in the reference driver).
+            return math.clamp(Raw[r * SrcWidth + c] * 255f * Contrast, 0f, 255f);
         }
     }
 }
