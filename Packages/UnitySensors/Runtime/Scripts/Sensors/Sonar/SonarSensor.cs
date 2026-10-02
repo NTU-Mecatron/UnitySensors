@@ -31,7 +31,7 @@ namespace UnitySensors.Sensor.Sonar
     /// </summary>
     public abstract class SonarSensor : UnitySensor, IPointCloudInterface<PointXYZI>
     {
-        [Header("Sonar")]
+        [Header("Sonar Configuration")]
         [Tooltip("Number of rays cast per beam. Beam = A fan of rays.")]
         public int NumRaysPerBeam = 500;
         [Tooltip("Total opening angle of _each_ beam.")]
@@ -45,17 +45,16 @@ namespace UnitySensors.Sensor.Sonar
         [Tooltip("Reflectivity for any surface without an AcousticSurface component, in [0, 1].")]
         [Range(0f, 1f)]
         public float DefaultReflectivity = 0.5f;
-        [Tooltip("Multiplier applied to the [0, 1] return intensity when it is packed into " +
+        [Tooltip("Multiplier applied to the [0, 1] returned intensity when it is packed into " +
                  "the PointXYZI point cloud. Leave at 1 to keep the physical value; raise it " +
                  "(e.g. 255) if a downstream consumer expects a wider range.")]
         public float PointCloudIntensityScale = 1f;
-        [Tooltip("Mean of the per-ray multiplicative intensity speckle noise. 1 = unbiased.")]
-        public float ExponentialNoiseMean = 1f;
-        [Tooltip("Mean extra distance (world units) added to each ray's range by " +
-                 "reverberation/multipath spread. 0 disables it.")]
+        [Header("Per-ray Exponential Noise")]
+        [Tooltip("Mean of the per-ray additive noise applied on returned range. (range_final = range_returned + E(1 / Mean)); 0 disables it")]
         public float RangeNoiseMean = 0.05f;
-        [Tooltip("Mean of Rayleigh Noise")]
-        public float RayleighNoiseMean = 1;
+        [Tooltip("Intensity is scaled by uniform distribution to replicate diffusion noise. This exponent is to control noise level. (<1 reduces intensity penalty)")]
+        public float IntensityNoiseExponent = 0.5f;
+        [Header("Noise on Sonar Image")]
         [Tooltip("Mean of the image-level Gaussian noise term.")]
         public float ImageNoiseNormalMean = 0f;
         [Tooltip("Std-dev of the image-level Gaussian noise term. Kept small relative to " +
@@ -192,8 +191,8 @@ namespace UnitySensors.Sensor.Sonar
             {
                 LocalPoints = _localPoints,
                 Intensities = _intensities,
-                IntensityNoiseMean = ExponentialNoiseMean,
                 RangeNoiseMean = RangeNoiseMean,
+                IntensityNoiseExponent = IntensityNoiseExponent,
                 Seed = _noiseCycleSeed
             };
 

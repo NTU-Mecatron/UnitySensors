@@ -64,7 +64,7 @@ namespace UnitySensors.Sensor.Sonar
 
             // Sensor gain-response curve (soft compression toward the bright end).
             Image[i] = 1 - Mathf.Pow((1 - Image[i]), 2);
-            // Image[i] = Mathf.Pow(Image[i] * Image[i], 2) // If sonar has on-board gain reduction
+            // Image[i] = Image[i] * Image[i]; // If sonar has on-board gain reduction
         }
 
         private static float SampleGaussianNoise(ref Random random, float normalMean, float normalSigma)
