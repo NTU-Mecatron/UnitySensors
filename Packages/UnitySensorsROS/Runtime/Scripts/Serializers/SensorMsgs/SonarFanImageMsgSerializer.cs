@@ -54,6 +54,7 @@ namespace UnitySensors.ROS.Serializer.Sensor
         private NativeArray<byte> _fanImage;
 
         public HeaderSerializer Header { get => _header; set => _header = value; }
+        public float Contrast { get => _contrast; set => _contrast = Mathf.Max(value, 0f); }
 
         public void SetSource(ForwardLookingSonarSensor source)
         {
