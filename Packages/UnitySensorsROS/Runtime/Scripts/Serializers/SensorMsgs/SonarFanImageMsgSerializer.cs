@@ -18,21 +18,11 @@ namespace UnitySensors.ROS.Serializer.Sensor
     /// Serializes a <see cref="ForwardLookingSonarSensor"/>'s per-cycle
     /// <see cref="SonarSensor.SonarImage"/> as the Cartesian "fan" picture operators expect:
     /// a polar-to-Cartesian warp of the sensor's own bearing/range grid (see
-    /// <see cref="SonarImageMsgSerializer"/> for that raw format), replicating
-    /// sonoptix_sonar's echo_imager.py -- mono8, not the driver's bgr8 + VIRIDIS colormap.
+    /// <see cref="SonarImageMsgSerializer"/> for that raw format).
     ///
-    /// This reads <see cref="SonarSensor.SonarImage"/> directly rather than re-binning the
-    /// point cloud itself, so the fan reflects the sensor's own averaging and noise
-    /// (diffusion + image-level) instead of a separate, divergent max-based rebin. That also
+    /// This reads <see cref="SonarSensor.SonarImage"/> directly. That
     /// means the polar grid's resolution is the sensor's own <c>NumRangeBins</c>/<c>NumBeams</c>,
-    /// not an independently configurable resolution -- there is no longer a knob to rebin at
-    /// a different resolution downstream without duplicating the sensor's binning logic.
-    ///
-    /// Two deliberate departures from the reference driver: it uses this sensor's actual
-    /// <c>FLSFOVDeg</c> directly instead of the driver's 90/120 degree range-based guess (we
-    /// have ground truth it doesn't), and it reads <c>MaxRange</c> straight off the sensor
-    /// instead of round-tripping it through embedded image telemetry (unnecessary here since
-    /// both ends live in the same process).
+    /// not an independently configurable resolution.
     /// </summary>
     [System.Serializable]
     public class SonarFanImageMsgSerializer : RosMsgSerializer<ImageMsg>

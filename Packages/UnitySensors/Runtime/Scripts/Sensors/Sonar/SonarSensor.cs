@@ -66,7 +66,7 @@ namespace UnitySensors.Sensor.Sonar
         /// <summary>
         /// Total azimuth FOV the sonar image's columns sweep, in degrees; 0 if the sensor
         /// has no azimuth axis in its image (e.g. MBES, which always has NumBeams == 1).
-        /// Overridden per modality since the FOV concept only exists on beam-sweeping
+        /// Overridden per sonar model since the FOV concept only exists on beam-sweeping
         /// sensors like <see cref="ForwardLookingSonarSensor"/>.
         /// </summary>
         protected virtual float ImageFovDeg => 0f;

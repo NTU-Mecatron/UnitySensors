@@ -19,10 +19,8 @@ namespace UnitySensors.ROS.Serializer.Sensor
     /// publishes, not the Cartesian "wedge" picture -- that's a downstream projection of
     /// this data (see <see cref="SonarFanImageMsgSerializer"/>).
     ///
-    /// Reads <see cref="SonarSensor.SonarImage"/> directly (the sensor's own averaged,
-    /// noised image) rather than re-binning the point cloud, so the published image
-    /// reflects the sensor's own pipeline instead of a separate, divergent rebin. That also
-    /// ties this message's resolution to the sensor's own <c>NumRangeBins</c>/<c>NumBeams</c>;
+    /// Reads <see cref="SonarSensor.SonarImage"/> directly (the sensor's own averaged, noised image).
+    /// That ties this message's resolution to the sensor's own <c>NumRangeBins</c>/<c>NumBeams</c>;
     /// there is no longer an independently configurable output resolution.
     /// </summary>
     [System.Serializable]

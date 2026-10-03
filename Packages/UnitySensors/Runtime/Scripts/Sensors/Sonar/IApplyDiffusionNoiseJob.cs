@@ -21,7 +21,7 @@ namespace UnitySensors.Sensor.Sonar
         public NativeArray<float3> LocalPoints;
         public NativeArray<float> Intensities;
 
-        public float RangeNoiseMean;     // mean extra distance (world units) added to range
+        public float RangeNoiseMean;
         public float IntensityNoiseExponent;
         public uint Seed;                // per-cycle seed; the caller refreshes this every cycle
 
@@ -31,16 +31,14 @@ namespace UnitySensors.Sensor.Sonar
             float range = math.length(point);
             if (range <= 0f) return;
 
-            // 1. Single uniform draw representing the diffusion event's severity
             Random rng = Random.CreateFromIndex(math.hash(new uint2((uint)i, Seed)));
             float u = 1f - rng.NextFloat(); 
 
-            // 2. Apply exponential noise on returned range.
-            // Exponential distribution values are obtained by inverse-transform technique.
+            // Apply exponential noise on returned range.
             float noisedRange = range + -RangeNoiseMean * math.log(u);
             LocalPoints[i] = point / range * noisedRange;
 
-            // 3. Diminishing intensity is modelled using scaled exponential PDF, which perfectly reduces back to 'u'. 
+            // Diminishing intensity is modelled using scaled exponential PDF, which perfectly reduces back to 'u'. 
             // The exponent is to tune the noise level. <1 reduces intensity penalty. >1 creates aggressive signal loss for highly turbid environments.
             float intensityScale = math.pow(u, IntensityNoiseExponent);
             Intensities[i] = Intensities[i] * intensityScale;

@@ -26,9 +26,6 @@ namespace UnitySensors.Sensor.Sonar
         [Tooltip("Field of view swept by the beams.")]
         public float FLSFOVDeg = 30;
 
-        // NumBeams == 1 has no spread to divide across; guarded to avoid a division by
-        // zero (FLSFOVDeg / 0 = Infinity, which turns into NaN as soon as it's multiplied
-        // by a beam index of 0 in IFlsBeamJob, corrupting every ray direction).
         public float DegreesPerBeamInFLS => NumBeams > 1 ? FLSFOVDeg / (NumBeams - 1) : 0f;
 
         protected override float ImageFovDeg => FLSFOVDeg;

@@ -3,12 +3,6 @@
 // Licensed under the Mozilla Public License 2.0 (MPL-2.0).
 // See the LICENSE file in the repository root for full boundary and usage terms.
 
-// Ported from the SMARC project (smarc2):
-// SMARCAssets/Runtime/Scripts/VehicleComponents/Sensors/Sonar.cs (the FLS branch of
-// SetupSonarRaycastJob.Execute). Run once at init by ForwardLookingSonarSensor to bake
-// the ray fan; the fed axes are the sensor-LOCAL basis, so the output directions are in
-// the sensor's own frame. Per-cycle world rays are built by BuildRaycastCommandsJob.
-
 using UnityEngine;
 using Unity.Burst;
 using Unity.Collections;

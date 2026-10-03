@@ -13,7 +13,7 @@ namespace UnitySensors.Sensor.Sonar
     /// Tags a collider with a scalar acoustic reflectivity in [0, 1]. Registered into
     /// <see cref="AcousticSurfaceRegistry"/> from Awake so sonar jobs can resolve it
     /// Burst-side from <c>RaycastHit.colliderEntityId</c>. Colliders without this
-    /// component fall back to the sensor's <c>DefaultReflectivity</c>.
+    /// component fall back to the sonar's <c>DefaultReflectivity</c>.
     /// </summary>
     [RequireComponent(typeof(Collider))]
     [AddComponentMenu("MDS/Sensor/Sonar/Acoustic Surface")]
@@ -41,9 +41,7 @@ namespace UnitySensors.Sensor.Sonar
     /// registers from Awake, before any sonar coroutine first ticks in Start. The first
     /// sonar to wire its job calls <see cref="GetSealed"/>, after which the map is
     /// immutable and registrations from additively-loaded or spawned objects are ignored
-    /// (their hits use the sensor's DefaultReflectivity). Sealing is what lets every sonar
-    /// job hold the map [ReadOnly] with no write ever racing a running job -- so no
-    /// deferred-write queue / flush step is needed.
+    /// (their hits use the sensor's DefaultReflectivity).
     /// </summary>
     public static class AcousticSurfaceRegistry
     {
@@ -109,8 +107,7 @@ namespace UnitySensors.Sensor.Sonar
             Application.quitting += Dispose;
 #if UNITY_EDITOR
             // Application.quitting does not fire on play-mode exit in the editor, and a
-            // domain reload drops the managed handle without freeing the native memory --
-            // which is exactly what the "Leak Detected : Persistent" check reports. Hook
+            // domain reload drops the managed handle without freeing the native memory. Hook
             // both editor lifecycle points so the map is always released.
             UnityEditor.AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
             UnityEditor.AssemblyReloadEvents.beforeAssemblyReload += Dispose;

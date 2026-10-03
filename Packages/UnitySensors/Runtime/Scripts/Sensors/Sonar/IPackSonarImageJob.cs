@@ -51,9 +51,7 @@ namespace UnitySensors.Sensor.Sonar
                 binSums[bin] += p.intensity;
             }
 
-            // 2. Divide by the beam's fixed ray budget, not by how many of those rays
-            // happened to land in this particular bin -- a bin only a few rays grazed
-            // should come out dimmer than one the whole elevation fan covered.
+            // 2. Divide by the beam's fixed ray budget
             float normalizer = NumRaysPerBeam > 0 ? NumRaysPerBeam : 1;
             for (int r = 0; r < NumRangeBins; r++)
             {
