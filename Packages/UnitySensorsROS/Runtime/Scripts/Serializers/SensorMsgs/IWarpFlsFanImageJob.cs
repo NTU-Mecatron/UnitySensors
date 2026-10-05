@@ -11,7 +11,7 @@ using Unity.Mathematics;
 namespace UnitySensors.ROS.Serializer.Sensor
 {
     [BurstCompile]
-    internal struct IWarpSonarFanImageJob : IJobParallelFor
+    internal struct IWarpFlsFanImageJob : IJobParallelFor
     {
         [ReadOnly] public NativeArray<float> Raw; // SrcWidth x SrcHeight, normalized (not yet 0-255)
         public int SrcWidth;

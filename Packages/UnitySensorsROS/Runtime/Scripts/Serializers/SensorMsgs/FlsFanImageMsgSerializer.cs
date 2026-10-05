@@ -18,14 +18,14 @@ namespace UnitySensors.ROS.Serializer.Sensor
     /// Serializes a <see cref="ForwardLookingSonarSensor"/>'s per-cycle
     /// <see cref="SonarSensor.SonarImage"/> as the Cartesian "fan" picture operators expect:
     /// a polar-to-Cartesian warp of the sensor's own bearing/range grid (see
-    /// <see cref="SonarImageMsgSerializer"/> for that raw format).
+    /// <see cref="RawSonarImageMsgSerializer"/> for that raw format).
     ///
     /// This reads <see cref="SonarSensor.SonarImage"/> directly. That
     /// means the polar grid's resolution is the sensor's own <c>NumRangeBins</c>/<c>NumBeams</c>,
     /// not an independently configurable resolution.
     /// </summary>
     [System.Serializable]
-    public class SonarFanImageMsgSerializer : RosMsgSerializer<ImageMsg>
+    public class FlsFanImageMsgSerializer : RosMsgSerializer<ImageMsg>
     {
         [SerializeField]
         private HeaderSerializer _header;
@@ -40,7 +40,7 @@ namespace UnitySensors.ROS.Serializer.Sensor
         private int _dstHeight;
 
         private JobHandle _jobHandle;
-        private IWarpSonarFanImageJob _warpFanImageJob;
+        private IWarpFlsFanImageJob _warpFanImageJob;
         private NativeArray<byte> _fanImage;
 
         public HeaderSerializer Header { get => _header; set => _header = value; }
@@ -71,7 +71,7 @@ namespace UnitySensors.ROS.Serializer.Sensor
 
             _fanImage = new NativeArray<byte>(_dstWidth * _dstHeight, Allocator.Persistent);
 
-            _warpFanImageJob = new IWarpSonarFanImageJob
+            _warpFanImageJob = new IWarpFlsFanImageJob
             {
                 Raw = _sourceInterface.SonarImage,
                 SrcWidth = _numBeams,

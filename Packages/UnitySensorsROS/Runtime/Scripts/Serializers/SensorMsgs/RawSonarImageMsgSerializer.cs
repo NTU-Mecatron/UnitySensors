@@ -17,14 +17,14 @@ namespace UnitySensors.ROS.Serializer.Sensor
     /// as a mono8 <c>sensor_msgs/Image</c>: width = NumBeams (bearing), height =
     /// <c>NumRangeBins</c> (range). This is the raw bearing/range grid a real FLS driver
     /// publishes, not the Cartesian "wedge" picture -- that's a downstream projection of
-    /// this data (see <see cref="SonarFanImageMsgSerializer"/>).
+    /// this data (see <see cref="FlsFanImageMsgSerializer"/>).
     ///
     /// Reads <see cref="SonarSensor.SonarImage"/> directly (the sensor's own averaged, noised image).
     /// That ties this message's resolution to the sensor's own <c>NumRangeBins</c>/<c>NumBeams</c>;
     /// there is no longer an independently configurable output resolution.
     /// </summary>
     [System.Serializable]
-    public class SonarImageMsgSerializer : RosMsgSerializer<ImageMsg>
+    public class RawSonarImageMsgSerializer : RosMsgSerializer<ImageMsg>
     {
         [SerializeField]
         private HeaderSerializer _header;

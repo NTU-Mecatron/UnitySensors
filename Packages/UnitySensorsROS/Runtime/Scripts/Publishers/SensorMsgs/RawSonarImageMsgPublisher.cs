@@ -13,14 +13,16 @@ using UnitySensors.Sensor.Sonar;
 namespace UnitySensors.ROS.Publisher.Sensor
 {
     /// <summary>
-    /// Publishes a <see cref="ForwardLookingSonarSensor"/>'s per-cycle hits as the
-    /// Cartesian "fan" picture (mono8) operators expect, instead of the raw bearing/range
-    /// grid -- see <see cref="SonarFanImageMsgSerializer"/> for the warp details.
+    /// Publishes a <see cref="SonarSensor"/>'s per-cycle hits as a rectangular bearing x
+    /// range <c>sensor_msgs/Image</c> (mono8): columns = beam index, rows = range bin,
+    /// pixel = strongest return intensity in that beam/range cell. This is the raw image
+    /// most FLS ROS drivers publish; a Cartesian "wedge" picture is a downstream
+    /// projection of it, not something this publisher produces.
     /// </summary>
-    public class SonarFanImageMsgPublisher : RosMsgPublisher<SonarFanImageMsgSerializer, ImageMsg>
+    public class RawSonarImageMsgPublisher : RosMsgPublisher<RawSonarImageMsgSerializer, ImageMsg>
     {
         [SerializeField]
-        private ForwardLookingSonarSensor _source;
+        private SonarSensor _source;
 
         protected override void InitializePublisher()
         {
@@ -28,7 +30,7 @@ namespace UnitySensors.ROS.Publisher.Sensor
 
             if (_source == null)
             {
-                Debug.LogError("Source is not set in SonarFanImageMsgPublisher. Please ensure that the '_source' field is assigned in the Unity Editor or via code. Expected type: ForwardLookingSonarSensor.");
+                Debug.LogError("Source is not set in RawSonarImageMsgPublisher. Please ensure that the '_source' field is assigned in the Unity Editor or via code. Expected type: SonarSensor.");
                 return;
             }
             _serializer.SetSource(_source);
