@@ -4,6 +4,8 @@
 // See the LICENSE file in the repository root for full boundary and usage terms.
 
 using UnityEngine;
+using Unity.Collections;
+using Unity.Jobs;
 
 using RosMessageTypes.Sensor;
 
@@ -28,12 +30,19 @@ namespace UnitySensors.ROS.Serializer.Sensor
     {
         [SerializeField]
         private HeaderSerializer _header;
+        [SerializeField, Min(0f), Tooltip("Gain applied to raw intensity before quantizing to mono8 (cv2.convertScaleAbs alpha in the reference driver). 1 = no change.")]
+        private float _contrast = 1f;
 
         private SonarSensor _sourceInterface;
         private int _numBeams;
         private int _numRangeBins;
 
+        private JobHandle _jobHandle;
+        private IQuantizeSonarImageJob _quantizeJob;
+        private NativeArray<byte> _rawImage;
+
         public HeaderSerializer Header { get => _header; set => _header = value; }
+        public float Contrast { get => _contrast; set => _contrast = Mathf.Max(value, 0f); }
 
         public void SetSource(SonarSensor source)
         {
@@ -54,21 +63,38 @@ namespace UnitySensors.ROS.Serializer.Sensor
             _msg.height = (uint)_numRangeBins;
             _msg.step = (uint)_numBeams;
             _msg.data = new byte[_numBeams * _numRangeBins];
+
+            _rawImage = new NativeArray<byte>(_numBeams * _numRangeBins, Allocator.Persistent);
+
+            _quantizeJob = new IQuantizeSonarImageJob
+            {
+                Raw = _sourceInterface.SonarImage,
+                Contrast = _contrast,
+                Dst = _rawImage
+            };
         }
 
         public override ImageMsg Serialize()
         {
             _msg.header = _header.Serialize();
 
-            var sonarImage = _sourceInterface.SonarImage;
-            for (int idx = 0; idx < sonarImage.Length; idx++)
-            {
-                _msg.data[idx] = (byte)Mathf.Clamp(sonarImage[idx] * 255f, 0f, 255f);
-            }
+            // Re-read every cycle rather than relying on the handle captured in Init
+            // (same pattern as FlsFanImageMsgSerializer).
+            _quantizeJob.Raw = _sourceInterface.SonarImage;
+            _quantizeJob.Contrast = _contrast;
+
+            _jobHandle = _quantizeJob.Schedule(_rawImage.Length, 64);
+            _jobHandle.Complete();
+
+            _rawImage.CopyTo(_msg.data);
 
             return _msg;
         }
 
-        public override void OnDestroy() { }
+        public override void OnDestroy()
+        {
+            _jobHandle.Complete();
+            if (_rawImage.IsCreated) _rawImage.Dispose();
+        }
     }
 }
