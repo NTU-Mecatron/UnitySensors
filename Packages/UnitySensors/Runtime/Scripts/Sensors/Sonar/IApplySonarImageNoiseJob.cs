@@ -45,7 +45,7 @@ namespace UnitySensors.Sensor.Sonar
             int beam = i % NumBeams;
 
             float range = (r + 0.5f) / NumRangeBins * MaxRange;
-            float azimuthDegAbs = NumBeams > 1 ? Mathf.Abs((beam / (float)(NumBeams - 1) - 0.5f) * FovDeg - FovDeg / 2): 0f;
+            float azimuthDegAbs = NumBeams > 1 ? Mathf.Abs((beam / (float)(NumBeams - 1) - 0.5f) * FovDeg): 0f;
             float azimuthRadAbs = azimuthDegAbs * Mathf.Deg2Rad;
             
             Random rng = Random.CreateFromIndex(math.hash(new uint2((uint)i, Seed)));
