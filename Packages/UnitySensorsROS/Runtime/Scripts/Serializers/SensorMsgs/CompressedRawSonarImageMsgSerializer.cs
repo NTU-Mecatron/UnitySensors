@@ -28,6 +28,7 @@ namespace UnitySensors.ROS.Serializer.Sensor
         private readonly Mono8JpegEncoder _encoder = new();
 
         public HeaderSerializer Header { get => _image.Header; set => _image.Header = value; }
+        public float Contrast { get => _image.Contrast; set => _image.Contrast = value; }
 
         public void SetSource(SonarSensor source)
         {
