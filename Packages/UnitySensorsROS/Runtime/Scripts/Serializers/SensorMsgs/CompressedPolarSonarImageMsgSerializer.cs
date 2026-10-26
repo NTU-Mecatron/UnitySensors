@@ -13,15 +13,15 @@ using UnitySensors.Sensor.Sonar;
 namespace UnitySensors.ROS.Serializer.Sensor
 {
     /// <summary>
-    /// JPEG-compressed variant of <see cref="RawSonarImageMsgSerializer"/>: the raw
+    /// JPEG-compressed variant of <see cref="PolarSonarImageMsgSerializer"/>: the polar
     /// bearing/range grid (width = NumBeams, height = NumRangeBins), published as a
     /// <c>sensor_msgs/CompressedImage</c>.
     /// </summary>
     [System.Serializable]
-    public class CompressedRawSonarImageMsgSerializer : RosMsgSerializer<CompressedImageMsg>
+    public class CompressedPolarSonarImageMsgSerializer : RosMsgSerializer<CompressedImageMsg>
     {
         [SerializeField]
-        private RawSonarImageMsgSerializer _image;
+        private PolarSonarImageMsgSerializer _image;
         [SerializeField, Range(1, 100)]
         private int _quality = 75;
 

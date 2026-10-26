@@ -18,7 +18,7 @@ namespace UnitySensors.ROS.Serializer.Sensor
     /// Serializes a <see cref="ForwardLookingSonarSensor"/>'s per-cycle
     /// <see cref="SonarSensor.SonarImage"/> as the Cartesian "fan" picture operators expect:
     /// a polar-to-Cartesian warp of the sensor's own bearing/range grid (see
-    /// <see cref="RawSonarImageMsgSerializer"/> for that raw format).
+    /// <see cref="PolarSonarImageMsgSerializer"/> for that polar format).
     ///
     /// This reads <see cref="SonarSensor.SonarImage"/> directly. That
     /// means the polar grid's resolution is the sensor's own <c>NumRangeBins</c>/<c>NumBeams</c>,

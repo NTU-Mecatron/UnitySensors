@@ -17,7 +17,7 @@ namespace UnitySensors.ROS.Serializer.Sensor
     /// <summary>
     /// Serializes a <see cref="SonarSensor"/>'s per-cycle <see cref="SonarSensor.SonarImage"/>
     /// as a mono8 <c>sensor_msgs/Image</c>: width = NumBeams (bearing), height =
-    /// <c>NumRangeBins</c> (range). This is the raw bearing/range grid a real FLS driver
+    /// <c>NumRangeBins</c> (range). This is the polar bearing/range grid a real FLS driver
     /// publishes, not the Cartesian "wedge" picture -- that's a downstream projection of
     /// this data (see <see cref="FlsFanImageMsgSerializer"/>).
     ///
@@ -26,7 +26,7 @@ namespace UnitySensors.ROS.Serializer.Sensor
     /// there is no longer an independently configurable output resolution.
     /// </summary>
     [System.Serializable]
-    public class RawSonarImageMsgSerializer : RosMsgSerializer<ImageMsg>
+    public class PolarSonarImageMsgSerializer : RosMsgSerializer<ImageMsg>
     {
         [SerializeField]
         private HeaderSerializer _header;
@@ -39,7 +39,7 @@ namespace UnitySensors.ROS.Serializer.Sensor
 
         private JobHandle _jobHandle;
         private IQuantizeSonarImageJob _quantizeJob;
-        private NativeArray<byte> _rawImage;
+        private NativeArray<byte> _polarImage;
 
         public HeaderSerializer Header { get => _header; set => _header = value; }
         public float Contrast { get => _contrast; set => _contrast = Mathf.Max(value, 0f); }
@@ -64,13 +64,13 @@ namespace UnitySensors.ROS.Serializer.Sensor
             _msg.step = (uint)_numBeams;
             _msg.data = new byte[_numBeams * _numRangeBins];
 
-            _rawImage = new NativeArray<byte>(_numBeams * _numRangeBins, Allocator.Persistent);
+            _polarImage = new NativeArray<byte>(_numBeams * _numRangeBins, Allocator.Persistent);
 
             _quantizeJob = new IQuantizeSonarImageJob
             {
                 Raw = _sourceInterface.SonarImage,
                 Contrast = _contrast,
-                Dst = _rawImage
+                Dst = _polarImage
             };
         }
 
@@ -83,10 +83,10 @@ namespace UnitySensors.ROS.Serializer.Sensor
             _quantizeJob.Raw = _sourceInterface.SonarImage;
             _quantizeJob.Contrast = _contrast;
 
-            _jobHandle = _quantizeJob.Schedule(_rawImage.Length, 64);
+            _jobHandle = _quantizeJob.Schedule(_polarImage.Length, 64);
             _jobHandle.Complete();
 
-            _rawImage.CopyTo(_msg.data);
+            _polarImage.CopyTo(_msg.data);
 
             return _msg;
         }
@@ -94,7 +94,7 @@ namespace UnitySensors.ROS.Serializer.Sensor
         public override void OnDestroy()
         {
             _jobHandle.Complete();
-            if (_rawImage.IsCreated) _rawImage.Dispose();
+            if (_polarImage.IsCreated) _polarImage.Dispose();
         }
     }
 }
