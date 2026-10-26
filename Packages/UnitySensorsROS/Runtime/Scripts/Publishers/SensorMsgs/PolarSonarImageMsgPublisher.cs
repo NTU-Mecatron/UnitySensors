@@ -13,10 +13,13 @@ using UnitySensors.Sensor.Sonar;
 namespace UnitySensors.ROS.Publisher.Sensor
 {
     /// <summary>
-    /// Publishes a <see cref="SonarSensor"/>'s raw bearing x range grid as a JPEG
-    /// <c>sensor_msgs/CompressedImage</c> -- see <see cref="CompressedRawSonarImageMsgSerializer"/>.
+    /// Publishes a <see cref="SonarSensor"/>'s per-cycle hits as a rectangular bearing x
+    /// range <c>sensor_msgs/Image</c> (mono8): columns = beam index, rows = range bin,
+    /// pixel = strongest return intensity in that beam/range cell. This is the polar image
+    /// most FLS ROS drivers publish; a Cartesian "wedge" picture is a downstream
+    /// projection of it, not something this publisher produces.
     /// </summary>
-    public class CompressedRawSonarImageMsgPublisher : RosMsgPublisher<CompressedRawSonarImageMsgSerializer, CompressedImageMsg>
+    public class PolarSonarImageMsgPublisher : RosMsgPublisher<PolarSonarImageMsgSerializer, ImageMsg>
     {
         [SerializeField]
         private SonarSensor _source;
@@ -27,7 +30,7 @@ namespace UnitySensors.ROS.Publisher.Sensor
 
             if (_source == null)
             {
-                Debug.LogError("Source is not set in CompressedRawSonarImageMsgPublisher. Please ensure that the '_source' field is assigned in the Unity Editor or via code. Expected type: SonarSensor.");
+                Debug.LogError("Source is not set in PolarSonarImageMsgPublisher. Please ensure that the '_source' field is assigned in the Unity Editor or via code. Expected type: SonarSensor.");
                 return;
             }
             _serializer.SetSource(_source);
